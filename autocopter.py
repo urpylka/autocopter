@@ -61,27 +61,22 @@ def init():
         bot.sendMessage(62922848, "bot online: "+get_ip())
         bot.sendMessage(62922848, get_status(vehicle))
 
-global vehicle
-init()
-
-import time
-# Keep the program running.
-STATE = 'IDLE'
-while 1:
-    if STATE == 'IDLE':
-        pass
-    elif STATE == 'FLY':
-        pass
-    elif STATE == 'EMERGY_STOP':
-        pass
-    else:
-        pass
-    time.sleep(1000)
-
-# Close vehicle object before exiting script
-vehicle.close()
-
-# Shut down simulator
-#sitl.stop()
-#print("Completed")
-################################################
+try:
+    global vehicle
+    init()
+    import time
+    # Keep the program running.
+    STATE = 'IDLE'
+    while 1:
+        if STATE == 'IDLE':
+            pass
+        elif STATE == 'FLY':
+            pass
+        elif STATE == 'EMERGY_STOP':
+            pass
+        else:
+            pass
+        time.sleep(1000)
+finally:
+    # Close vehicle object before exiting script
+    vehicle.close()
