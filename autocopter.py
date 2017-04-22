@@ -20,10 +20,10 @@ def init():
     # Import DroneKit-Python
     from dronekit import connect, VehicleMode
     # Connect to the Vehicle (in this case a UDP endpoint)
-    global vehicle = connect('tcp:127.0.0.1:14600', wait_ready=True)
+    vehicle = connect('tcp:127.0.0.1:14600', wait_ready=True)
     #здесь же запуск вспомогательных потоков
 
-    import telepot
+    import sys, telepot
 
     def handle(msg):
         content_type, chat_type, chat_id = telepot.glance(msg)
@@ -54,20 +54,29 @@ def init():
         else:
             bot.sendMessage(chat_id, 'Access error!')
 
-        # TOKEN = sys.argv[1]  # get token from command-line
-        TOKEN = '173263473:AAGo241RV6j1VOOFCNOKaMF9xZwLbnd39pe'
-
+        TOKEN = sys.argv[1]  # get token from command-line
         bot = telepot.Bot(TOKEN)
         bot.message_loop(handle)
         print ('Listening ...')
         bot.sendMessage(62922848, "bot online: "+get_ip())
         bot.sendMessage(62922848, get_status(vehicle))
+
+global vehicle
 init()
 
 import time
 # Keep the program running.
+STATE = 'IDLE'
 while 1:
-    time.sleep(10)
+    if STATE == 'IDLE':
+        pass
+    elif STATE == 'FLY':
+        pass
+    elif STATE == 'EMERGY_STOP':
+        pass
+    else:
+        pass
+    time.sleep(1000)
 
 # Close vehicle object before exiting script
 vehicle.close()
