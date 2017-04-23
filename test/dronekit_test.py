@@ -8,12 +8,12 @@ def get_ip():
 def get_status(vehicle):
     # Get some vehicle attributes (state)
     buf = "Get some vehicle attribute values:"+\
-          "\nGPS: " + vehicle.gps_0+\
-          "\nBattery: " % vehicle.battery+\
-          "\nLast Heartbeat: " % vehicle.last_heartbeat+\
-          "\nIs Armable?: " % vehicle.is_armable+\
-          "\nSystem status: " % vehicle.system_status.state+\
-          "\nMode: " % vehicle.mode.name    # settable
+          "\nGPS: %s" % vehicle.gps_0+\
+          "\nBattery: %s" % vehicle.battery+\
+          "\nLast Heartbeat: %s" % vehicle.last_heartbeat+\
+          "\nIs Armable?: %s" % vehicle.is_armable+\
+          "\nSystem status: %s" % vehicle.system_status.state+\
+          "\nMode: %s" % vehicle.mode.name    # settable
     return buf
 # Import DroneKit-Python
 from dronekit import connect, VehicleMode
