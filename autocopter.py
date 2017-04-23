@@ -77,4 +77,6 @@ finally:
     # Close vehicle object before exiting script
     if vehicle!=None:
         vehicle.close()
-        print('finally success!')
+        print('\n######################################################')
+        print('\nFinally success!\n')
+        print('######################################################\n')
