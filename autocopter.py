@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# -*- coding: utf8 -*-import sys
+# -*- coding: utf8 -*-
 def get_ip():
     import http.client
     conn = http.client.HTTPConnection("smirart.ru")
