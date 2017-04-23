@@ -40,7 +40,7 @@ def handle(msg):
     bot = telepot.Bot(TOKEN)
     bot.message_loop(handle)
     print ('Listening ...')
-    bot.sendMessage(62922848, "bot online: " + get_ip())
+    bot.sendMessage(62922848, "copter online: " + get_ip())
     #bot.sendMessage(62922848, get_status(vehicle))
 
 import time

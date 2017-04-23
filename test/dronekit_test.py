@@ -19,6 +19,6 @@ def get_status(vehicle):
 from dronekit import connect, VehicleMode
 # Connect to the Vehicle (in this case a UDP endpoint)
 vehicle = connect('tcp:127.0.0.1:14600', wait_ready=True)
-print get_ip()
+print "copter online: %s" % get_ip()
 print get_status(vehicle)
 vehicle.close()

@@ -8,7 +8,7 @@ def get_ip():
 def get_status(vehicle):
     # Get some vehicle attributes (state)
     buf = "Get some vehicle attribute values:"+\
-          "\nGPS: " + vehicle.gps_0+\
+          "\nGPS: %s" % vehicle.gps_0+\
           "\nBattery: %s" % vehicle.battery+\
           "\nLast Heartbeat: %s" % vehicle.last_heartbeat+\
           "\nIs Armable?: %s" % vehicle.is_armable+\
