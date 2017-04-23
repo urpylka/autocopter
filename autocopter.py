@@ -31,7 +31,7 @@ try:
                 elif msg['text'] == '/status':
                     # вывод информации о коптере, ip, заряд батареи
                     #bot.sendMessage(chat_id, 'preparing status...')
-                    bot.sendMessage(62922848, "copter ip: %s" % get_ip() + '\n' + get_status(vehicle))
+                    bot.sendMessage(62922848, "copter ip: %s" % get_ip() + '\n' + get_status(vehicle) + '\n' + STATE)
                 elif msg['text'] == '/stop':
                     # остановка всех операций в MACHINE STATE и перевод в IDLE
                     bot.sendMessage(chat_id, 'stop all operations, go to IDLE STATE')
@@ -59,7 +59,7 @@ try:
     vehicle = connect('tcp:127.0.0.1:14600', wait_ready=True)
     # здесь же запуск вспомогательных потоков
     ###########################################
-    bot.sendMessage(62922848, "copter online: %s" % get_ip())
+    bot.sendMessage(62922848, "Starting main daemon, copter is online: %s" % get_ip())
     import time
     # Keep the program running.
     STATE = 'IDLE'
