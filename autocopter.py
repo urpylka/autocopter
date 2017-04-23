@@ -15,21 +15,14 @@ def get_status(vehicle):
           "\nSystem status: %s" % vehicle.system_status.state+\
           "\nMode: %s" % vehicle.mode.name    # settable
     return buf
+vehicle = None #для доступности в finally
 try:
-    # Import DroneKit-Python
-    from dronekit import connect, VehicleMode
-    # Connect to the Vehicle (in this case a UDP endpoint)
-    vehicle = connect('tcp:127.0.0.1:14600', wait_ready=True)
-    # здесь же запуск вспомогательных потоков
-
-    #START TELEGRAM BOT
+    # START TELEGRAM BOT
     import sys, telepot
-
-
     def handle(msg):
+        """хендлер выполняется в отдельном потоке, вызывается событием на подобие блокирующей очереди"""
         content_type, chat_type, chat_id = telepot.glance(msg)
         print(content_type, chat_type, chat_id)
-
         if chat_id == 62922848:
             if content_type == 'text':
                 if msg['text'] == '/start':
@@ -37,7 +30,9 @@ try:
                     bot.sendMessage(chat_id, 'try starting mission...')
                 elif msg['text'] == '/status':
                     # вывод информации о коптере, ip, заряд батареи
-                    bot.sendMessage(chat_id, 'preparing status...')
+                    #bot.sendMessage(chat_id, 'preparing status...')
+                    bot.sendMessage(62922848, "copter online: %s" % get_ip())
+                    bot.sendMessage(62922848, get_status(vehicle))
                 elif msg['text'] == '/stop':
                     # остановка всех операций в MACHINE STATE и перевод в IDLE
                     bot.sendMessage(chat_id, 'stop all operations, go to IDLE STATE')
@@ -54,14 +49,19 @@ try:
                 bot.sendMessage(chat_id, 'Bad command!')
         else:
             bot.sendMessage(chat_id, 'Access error!')
-
-        TOKEN = sys.argv[1]  # get token from command-line
-        bot = telepot.Bot(TOKEN)
-        bot.message_loop(handle)
-        print ('Listening ...')
-        bot.sendMessage(62922848, "bot online: " + get_ip())
-        bot.sendMessage(62922848, get_status(vehicle))
-
+    TOKEN = sys.argv[1]  # get token from command-line
+    bot = telepot.Bot(TOKEN)
+    bot.message_loop(handle)
+    print ('Listening ...')
+    ###########################################
+    # Import DroneKit-Python
+    from dronekit import connect, VehicleMode
+    # Connect to the Vehicle (in this case a UDP endpoint)
+    vehicle = connect('tcp:127.0.0.1:14600', wait_ready=True)
+    # здесь же запуск вспомогательных потоков
+    ###########################################
+    bot.sendMessage(62922848, "copter online: %s" % get_ip())
+    bot.sendMessage(62922848, get_status(vehicle))
     import time
     # Keep the program running.
     STATE = 'IDLE'
@@ -77,4 +77,5 @@ try:
         time.sleep(1000)
 finally:
     # Close vehicle object before exiting script
-    vehicle.close()
+    if vehicle!=None:
+        vehicle.close()
