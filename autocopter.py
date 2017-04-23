@@ -17,14 +17,7 @@ def get_status(vehicle):
     return buf
 #функция начала инциализации главного потока
 def init():
-    # Import DroneKit-Python
-    from dronekit import connect, VehicleMode
-    # Connect to the Vehicle (in this case a UDP endpoint)
-    vehicle = connect('tcp:127.0.0.1:14600', wait_ready=True)
-    #здесь же запуск вспомогательных потоков
-
     import sys, telepot
-
     def handle(msg):
         content_type, chat_type, chat_id = telepot.glance(msg)
         print(content_type, chat_type, chat_id)
@@ -62,8 +55,14 @@ def init():
         bot.sendMessage(62922848, get_status(vehicle))
 
 try:
-    global vehicle
-    init()
+    # Import DroneKit-Python
+    from dronekit import connect, VehicleMode
+    # Connect to the Vehicle (in this case a UDP endpoint)
+    vehicle = connect('tcp:127.0.0.1:14600', wait_ready=True)
+    # здесь же запуск вспомогательных потоков
+
+    init() #START TELEGRAM BOT
+
     import time
     # Keep the program running.
     STATE = 'IDLE'
