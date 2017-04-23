@@ -35,14 +35,12 @@ def handle(msg):
             bot.sendMessage(chat_id, 'Bad command!')
     else:
         bot.sendMessage(chat_id, 'Access error!')
-
-    TOKEN = sys.argv[1]  # get token from command-line
-    bot = telepot.Bot(TOKEN)
-    bot.message_loop(handle)
-    print ('Listening ...')
-    bot.sendMessage(62922848, "copter online: %s" % get_ip())
-    #bot.sendMessage(62922848, get_status(vehicle))
-
+TOKEN = sys.argv[1]  # get token from command-line
+bot = telepot.Bot(TOKEN)
+bot.message_loop(handle)
+print ('Listening ...')
+bot.sendMessage(62922848, "copter online: %s" % get_ip())
+#bot.sendMessage(62922848, get_status(vehicle))
 import time
 # Keep the program running.
 STATE = 'IDLE'
