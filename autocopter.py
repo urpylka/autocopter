@@ -31,7 +31,7 @@ try:
                 elif msg['text'] == '/status':
                     # вывод информации о коптере, ip, заряд батареи
                     #bot.sendMessage(chat_id, 'preparing status...')
-                    bot.sendMessage(62922848, "copter online: %s" % get_ip() + '\n' + get_status(vehicle))
+                    bot.sendMessage(62922848, "copter ip: %s" % get_ip() + '\n' + get_status(vehicle))
                 elif msg['text'] == '/stop':
                     # остановка всех операций в MACHINE STATE и перевод в IDLE
                     bot.sendMessage(chat_id, 'stop all operations, go to IDLE STATE')
@@ -77,3 +77,4 @@ finally:
     # Close vehicle object before exiting script
     if vehicle!=None:
         vehicle.close()
+        print('finally success!')
