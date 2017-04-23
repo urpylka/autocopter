@@ -4,7 +4,7 @@ Autocopter
 Autocopter allow control your APM compatible copter with Telegram messenger.
 
 External library:
-dronekit-python
+dronekit-python,
 telepot
 
 Code in development!
@@ -14,5 +14,7 @@ Code in development!
 Install
 =======
 git clone https://github.com/urpylka/autocopter.git
+
 sudo -s
+
 python autocopter/autocopter.py $YOUR_BOT_TOKEN
