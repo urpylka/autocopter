@@ -15,9 +15,17 @@ def get_status(vehicle):
           "\nSystem status: %s" % vehicle.system_status.state+\
           "\nMode: %s" % vehicle.mode.name    # settable
     return buf
-#функция начала инциализации главного потока
-def init():
+try:
+    # Import DroneKit-Python
+    from dronekit import connect, VehicleMode
+    # Connect to the Vehicle (in this case a UDP endpoint)
+    vehicle = connect('tcp:127.0.0.1:14600', wait_ready=True)
+    # здесь же запуск вспомогательных потоков
+
+    #START TELEGRAM BOT
     import sys, telepot
+
+
     def handle(msg):
         content_type, chat_type, chat_id = telepot.glance(msg)
         print(content_type, chat_type, chat_id)
@@ -51,17 +59,8 @@ def init():
         bot = telepot.Bot(TOKEN)
         bot.message_loop(handle)
         print ('Listening ...')
-        bot.sendMessage(62922848, "bot online: "+get_ip())
+        bot.sendMessage(62922848, "bot online: " + get_ip())
         bot.sendMessage(62922848, get_status(vehicle))
-
-try:
-    # Import DroneKit-Python
-    from dronekit import connect, VehicleMode
-    # Connect to the Vehicle (in this case a UDP endpoint)
-    vehicle = connect('tcp:127.0.0.1:14600', wait_ready=True)
-    # здесь же запуск вспомогательных потоков
-
-    init() #START TELEGRAM BOT
 
     import time
     # Keep the program running.
