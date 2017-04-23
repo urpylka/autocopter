@@ -1,4 +1,4 @@
-Autocopter allow control your APM compitable copter with Telegram messanger.
+Autocopter allow control your APM compatible copter with Telegram messenger.
 
 External library:
 dronekit-python
