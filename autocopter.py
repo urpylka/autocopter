@@ -42,8 +42,8 @@ try:
                     bot.sendMessage(chat_id, 'Bad command!')
             elif content_type == 'location':
                 # расчет возможности полета в заданные координаты и построение полетного задания
-                bot.sendMessage(chat_id, 'preparing mission...')
-                bot.sendMessage(chat_id, msg['location'])
+                #bot.sendMessage(chat_id, 'preparing mission...')
+                bot.sendMessage(chat_id, msg['location']['latitude']+'\n'+msg['location']['longitude'])
             else:
                 bot.sendMessage(chat_id, 'Bad command!')
         else:
