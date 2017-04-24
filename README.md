@@ -1,5 +1,4 @@
-Autocopter
-==========
+#Autocopter
 
 Autocopter allow control your APM compatible copter with Telegram messenger.
 
@@ -11,8 +10,7 @@ Code in development!
 ====================
 23.04.2017
 
-Install
-=======
+### Install ###
 ```php
 git clone https://github.com/urpylka/autocopter.git
 sudo -s
