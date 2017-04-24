@@ -10,7 +10,7 @@ telepot
 23.04.2017
 
 ### Install ###
-Download from bulid/latest.sh file in your home direstory.
+Download from bulid/latest.sh file to your home direstory.
 ```php
 /home/pi/latest.sh
 ```
