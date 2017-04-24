@@ -10,11 +10,13 @@ telepot
 23.04.2017
 
 ### Install ###
+Download from bulid/latest.sh file in your home direstory.
+```php
+/home/pi/latest.sh
+```
+### Use for update and launch on Raspberry ###
 ```php
 git clone https://github.com/urpylka/autocopter.git
 sudo -s
-python autocopter/autocopter.py $YOUR_BOT_TOKEN
+python autocopter/autocopter.py 'YOUR_BOT_TOKEN'
 ```
-
-### Use for update and launch on Raspberry ###
-autocopter/bulid/latest.sh
