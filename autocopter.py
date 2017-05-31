@@ -1,5 +1,16 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 # -*- coding: utf8 -*-
+#import time
+#time.sleep(180000)
+import socket, time
+def check_internet():
+    try:
+        socket.gethostbyaddr('ya.ru')
+    except socket.gaierror:
+        return False
+    return True
+while not check_internet():
+    time.sleep(1)
 def get_ip():
     import http.client
     conn = http.client.HTTPConnection("smirart.ru")
@@ -72,7 +83,7 @@ try:
             pass
         else:
             pass
-        time.sleep(1000)
+        time.sleep(1)
 finally:
     # Close vehicle object before exiting script
     if vehicle!=None:

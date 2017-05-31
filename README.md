@@ -20,3 +20,5 @@ git clone https://github.com/urpylka/autocopter.git
 sudo -s
 python autocopter/autocopter.py 'YOUR_BOT_TOKEN'
 ```
+
+В репозиторий добавлена связка sakis3g+umtskeeper (папка 3g_modem)
