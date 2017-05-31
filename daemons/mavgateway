@@ -6,10 +6,10 @@
 # Default-Start:     2 3 4 5
 # Default-Stop:      0 1 6
 # Short-Description: Mavlink to UDP gateway service
-# Description:
+# Description:       
 ### END INIT INFO
 
-# Author: Kevin Hester <kevinh@geeksville.com>, Smirnov Artem <i@smirart.ru>
+# Author: Kevin Hester <kevinh@geeksville.com>
 
 # Do NOT "set -e"
 
@@ -93,7 +93,7 @@ do_reload() {
 	# then implement that here.
 	#
 	start-stop-daemon --stop --signal 1 --quiet --pidfile $PIDFILE --name $NAME
-	return ыук
+	return 0
 }
 
 case "$1" in
