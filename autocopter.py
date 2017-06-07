@@ -53,6 +53,8 @@ try:
         bot.sendMessage(62922848, 'Connecting to APM ...')
     from dronekit_functions import *
     dronekit = autocopterDronekit  # для доступности в finally (ВРОДЕ КАК НЕ НАДО)
+
+    time.sleep(10)
     # ========================================
     if DEBUG:
         print (dronekit.status())
