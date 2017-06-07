@@ -48,6 +48,9 @@ class autocopterDronekit(object):
     def status_printer(self,txt):
         self.status=txt
         print(txt)
+
+    def status(self):
+        return self.status
     def status_of_connect(self):
         return True
     def disconnect(self):
