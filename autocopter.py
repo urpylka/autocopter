@@ -29,9 +29,6 @@ try:
                     elif msg['text'] == '/status':
                         # вывод информации о коптере, ip, заряд батареи
                         #bot.sendMessage(chat_id, 'preparing status...')
-                        bot.sendMessage(62922848, "copter ip: %s" % get_ip() + '\n' + dronekit.get_status + '\nSTATE: %s' % STATE)
-                        bot.sendMessage(62922848,
-                                        "copter ip: %s" % get_ip() + '\n' + dronekit.get_status() + '\nSTATE: %s' % STATE)
                         bot.sendMessage(62922848,
                                         "copter ip: %s" % get_ip() + '\n' + dronekit.get_status(dronekit) + '\nSTATE: %s' % STATE)
                         bot.sendMessage(62922848,
