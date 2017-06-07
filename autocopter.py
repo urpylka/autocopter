@@ -61,6 +61,7 @@ try:
     from dronekit_functions import *
     dronekit = autocopterDronekit  # для доступности в finally (ВРОДЕ КАК НЕ НАДО)
     if dronekit.status_of_connect:
+        global STATE
         STATE = 'IDLE'
         if DEBUG:
             print ('Connect successful!')
