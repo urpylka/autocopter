@@ -61,7 +61,6 @@ class autocopterDronekit(object):
             self.vehicle.close()
     def get_status(self):
         # Get some vehicle attributes (state)
-        self.vehicle.mode = VehicleMode("GUIDED")
         buf = "Get some vehicle attribute values:" + \
               "\nGPS: %s" % self.vehicle.gps_0 + \
               "\nBattery: %s" % self.vehicle.battery + \
