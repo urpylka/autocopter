@@ -1,0 +1,2498 @@
+#! /usr/bin/env python
+
+#automatic UMTS internet connect/reconnect
+#
+#Copyright: Written by Markus Petz (Mintaka), 2012, 2013
+#
+#Acknowledgements:
+# Kal, author of ipcheck.py (http://ipcheck.sourceforge.net/)
+# Sakis Dimopoulos, author of Sakis3G (http://sakis3g.org/)
+#
+#Sources:
+# http://mintakaconciencia.net/squares/umtskeeper/
+# http://nixcraft.com/shell-scripting/12611-shell-script-detect-if-internet-link-up-not.html
+# http://code.activestate.com/recipes/425210/ (hints on using BaseHTTPServer)
+# http://www.sakis3g.org
+#
+#Licensed under the Hacktivismo Enhanced-Source Software License Agreement, Version 0.1
+#
+#This file is part of UMTSkeeper.
+#
+# This program is released under a double license:
+# ------------------------------------------------
+# Primarily, the Hacktivismo Enhanced-Source Software License Agreement (HESSLA),
+# which can be found in full and with an additional statement about its objectives,
+# at http://www.hacktivismo.com/about/hessla.php;
+# and for compatibility reasons, the GNU General Public License (GPL),
+# see http://www.gnu.org/licenses/.
+#
+#   While the GPL contains the terms and conditions under which this software and
+#   derivative works thereof can be freely distributed, and thus is aimed merely
+#   at software developers, the HESSLA, while granting the same rights and
+#   obligations to modify and distribute the software or derivative works,
+#   contains additional terms that govern the use of this software. This makes
+#   the HESSLA function as a contract between the author and the user, rather
+#   than just being a copyleft agreement.
+#   In particular, the HESSLA contains objectives on security standards
+#   (section 9), the adherence of the use of the software to respecting
+#   human rights, political freedom and privacy standards (section 10), as well as
+#   special terms on the use of the software by governmental entities and
+#   governmental persons (section 14).
+#
+#   For the purpose of including this software or portions thereof in GNU GPL
+#   licensed projects, this software is also licensed under the GPL. You may
+#   distribute this software or derivatives under the GNU GPL, provided that
+#   YOUR DISTRIBUTION IS ALSO SUBJECT TO THE HESSLA.
+#
+#   The HESSLA; full text included in LICENSE.txt
+#   ---------------------------------------------
+#   UMTSkeeper is free software: you can redistribute it and/or modify it
+#   under the terms of the
+#   Hacktivismo Enhanced-Source Software License Agreement (HESSLA)
+#   as published by Hacktivismo, either version 1, or prior, of the License,
+#   or (at your option) any later version.
+#
+#   By using this software, you express that you read and understood this
+#   license agreement, and that you are a Qualified Licensee of the software
+#   as laid out in section 0.8 at the time you use this software, meaning that
+#   you will not use this software for infringement of human rights or the
+#   right to privacy. You will not use this software for surveillance purposes
+#   or to otherwise spy on people, neither for doing any harm to a human being.
+#
+#   UMTSkeeper is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+#   Hacktivismo Enhanced-Source Software License Agreement (HESSLA)
+#   at http://www.hacktivismo.com/about/hessla.php for more details.
+
+# The latest source of this program can be found at
+# http://mintakaconciencia.net/squares/umtskeeper/
+
+
+#   GNU GPL:
+#   --------
+#    UMTSkeeper is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 2 of the License, or
+#    (at your option) any later version.
+#
+#    UMTSkeeper is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with UMTSkeeper.  If not, see <http://www.gnu.org/licenses/>.
+
+
+import atexit, base64, hashlib, httplib, os, re, shlex, signal, subprocess, sys, thread, urllib2
+from shutil import copy
+from time import sleep, strftime, time, mktime, localtime
+from datetime import datetime
+from calendar import monthrange
+from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
+import pdb
+
+
+version = '2.03'
+subVersion = '20130722.22'
+
+###### begin config
+conf = {}
+
+conf['testCycle'] = 8 #connection test period (cycles)
+conf['statCycle'] = 4 #statistics cycle in seconds
+conf['statSecureInt'] = 60 #period of saving the statistics file to disk
+conf['wrongPinDelay'] = 60 #delay next connection try if we encounter wrong pin. This could mean that the modem is just not yet ready for connections.
+
+conf['deviceName'] = '' #get this from lsusb (should be a part of the device name string without spaces)
+conf['ifaceNAT'] = '' #network interface to share connection on (used for NAT function)
+conf['ifaceName'] = 'ppp0' #network interface to monitor
+
+conf['monthStartDay'] = 1 #day of month the monthly traffic counter is reset
+conf['limitMonth'] = 0 #monthly transfer limit (in Bytes, 0 = no limit)
+conf['doLimitDay'] = 0 #daily transfer limit as given on command line (in Bytes, or "auto")
+conf['sakisSwitches'] = ''
+conf['sakisOperators'] = ''
+conf['sakisMaxFails'] = 4
+conf['sakisFailLockDuration'] = 300
+conf['logOnly'] = False
+
+conf['printMsg'] = True
+conf['logMsg'] = False
+conf['logFile'] = '/var/log/umtskeeper.log'
+
+#1 kByte = 1000 bytes, 1 MByte = 10^6 bytes
+conf['rateThreshold'] = 250 #lower threshold for counting rate in average rates (bytes/s)
+conf['secGraphMaxX'] = 100 #width of second graph (in statIntervals)
+conf['secGraph'] = {'scale': 2, 'markMajor': 20, 'markMinor': 10} #kBytes/pixel, kBytes/s, kBytes/s
+conf['daysGraph'] = {'scale': 50000, 'markMajor': 1000000, 'markMinor': 200000}
+conf['hoursGraph'] = {'scale': 2000, 'markMajor': 100000, 'markMinor': 20000}
+conf['hoursAvgGraph'] = {'scale': 1000, 'markMajor': 50000, 'markMinor': 10000}
+
+conf['writeStats'] = True
+conf['writeHTMLStats'] = False
+conf['htmlReloadInterval'] = 4 #auto-refresh cycle of HTML page in seconds (0 means no refresh)
+conf['htmlShowLog'] = False
+conf['htmlShowGraphs'] = 2
+conf['httpServer'] = False
+conf['httpPort'] = 8000
+conf['httpWhiteList'] = ['', 'umtskeeper.stat.html', 'style.css', 'favicon.ico', 'robots.txt']
+conf['httpIPList'] = False
+
+conf['dDNSProg'] = ''
+conf['dDNSUseFreeDNSMethod'] = False
+conf['dDNSUpdateURIs'] = ''
+conf['dDNSSite'] = ''
+conf['dDNSUseHTTPS'] = True
+conf['dDNSUseHTTP'] = False
+conf['dDNSPort'] = 80 #8245 is alternate for dyndns.com
+conf['dDNSSendIP'] = True
+conf['dDNSUsername'] = ''
+conf['dDNSPassword'] = ''
+conf['dDNSHosts'] = ''
+conf['ipWebsite'] = ''
+
+conf['debugLevel'] = 0
+
+####### end config
+
+#variables initialisation:
+
+progPath = sys.path[0] + '/'
+progName = 'umtskeeper'
+sakisProg = 'nice ' + progPath + 'sakis3g'
+usbResetProg = progPath + 'resetusb'
+
+confFileName = progName + '.conf'
+confFile = ''
+if os.path.isfile(progPath + confFileName): #look for config file in progPath
+  confFile = progPath + confFileName
+# if os.path.isfile('/etc/umtskeeper/' + confFileName): #look for config file in /etc/umtskeeper/
+#   confFile = '/etc/umtskeeper/' + confFileName
+
+
+#/run/ is usually tmpfs (ramdisk) so we don't write to a possible SSD/SD-card constantly:
+if os.path.isdir('/run'): conf['tempPath'] = '/run/umtskeeper/'
+else: conf['tempPath'] = '/var/run/umtskeeper/' #/run/ might not be present on every system
+conf['statFilePath'] = progPath
+statFileName = progName + '.stat'
+conf['htmlPath'] = ''
+statFileHTMLName = progName + '.stat.html'
+monthlyFileName = progName + '.monthly.csv'
+dailyFileName = progName + '.daily.csv'
+hourlyFileName = progName + '.hourly.csv'
+
+limitExceeded = False
+newSession = False
+inetIsDown = True
+modemPlugged = False
+netOperstate = ''
+disconnectNecessary = False
+wrongPinCount = 0
+limitDay = 0 #daily transfer limit (in Bytes, 0 = infinite)
+sakisFailCtr = 0
+sakisLockedUntil = 0
+
+graphs = {}
+
+currRate = 0
+rxCurrRate = 0
+txCurrRate = 0
+
+uSecond = 0
+nextStatCopySecond = 0
+sessionStartTime = ''
+connectionMsg = ''
+rxBytes = 0
+txBytes = 0
+remainingBytesDaily = 0
+rxRateSeconds = [0] * conf['secGraphMaxX']
+txRateSeconds = [0] * conf['secGraphMaxX']
+timeRateSeconds = [0.0] * conf['secGraphMaxX']
+
+intLog = []
+
+timer = [0.0] * 5 #killme: debug var
+
+statFileGlobals = "st, statProgVersion, statProgSubVersion, statFileComplete"
+st = {}
+statProgVersion = ''
+statProgSubVersion = ''
+st['ifaceName'] = ''
+st['lastuSec'] = 0
+st['currHr'] = datetime.now().hour
+st['currQHr'] = datetime.now().minute / 15
+st['today'] = datetime.now().day
+st['yesday'] = 0
+st['dateToday'] = ''
+st['weekDay'] = datetime.now().weekday()
+st['currMonth'] = datetime.now().month
+st['nextMonthStartSec'] = long(mktime((datetime.now().year, st['currMonth']+1, conf['monthStartDay'], 0, 0, 0, 0, 0, 0)))
+st['currCalendarMonth'] = st['currMonth']
+st['currYear'] = datetime.now().year
+st['sessStartTmSaved'] = ''
+st['offlSince'] = ''
+st['rxBTot'] = 0
+st['txBTot'] = 0
+st['rxBSessStart'] = 0
+st['txBSessStart'] = 0
+st['rxBytes'] = 0
+st['txBytes'] = 0
+st['rxBQHrStart'] = 0
+st['txBQHrStart'] = 0
+st['rxBQHr'] = 0
+st['txBQHr'] = 0
+st['rxBHrStart'] = 0
+st['txBHrStart'] = 0
+st['rxBHr'] = 0
+st['txBHr'] = 0
+st['qHrMaxRate'] = 0
+st['qHrAvgRateAcc'] = 0
+st['qHrAvgRateAccCtr'] = 0
+st['hrMaxRate'] = 0
+st['hrAvgRateAcc'] = 0
+st['hrAvgRateAccCtr'] = 0
+st['rxBTodayStart'] = 0
+st['txBTodayStart'] = 0
+st['rxBToday'] = 0
+st['txBToday'] = 0
+st['rxBYesday'] = 0
+st['txBYesday'] = 0
+st['rxBMonthStart'] = 0
+st['txBMonthStart'] = 0
+st['rxBMonth'] = 0
+st['txBMonth'] = 0
+st['bMonthMin'] = 0
+st['bMonthMinDate'] = 'n/a'
+st['bMonthMax'] = 0
+st['bMonthMaxDate'] = 'n/a'
+st['rateSecondsHr'] = [0]
+st['rateSecondsQHr'] = [0]
+st['rxBHrs'] = [0] * 24
+st['txBHrs'] = [0] * 24
+st['rxBHrsYesday'] = [0] * 24
+st['txBHrsYesday'] = [0] * 24
+st['rxBQHrs'] = map(lambda x: [x,x,x,x], st['rxBHrs'])
+st['txBQHrs'] = map(lambda x: [x,x,x,x], st['txBHrs'])
+st['rxBQHrsYesday'] = map(lambda x: [x,x,x,x], st['rxBHrsYesday'])
+st['txBQHrsYesday'] = map(lambda x: [x,x,x,x], st['txBHrsYesday'])
+st['rxBDays'] = [0] * 31
+st['txBDays'] = [0] * 31
+st['rxBDaysLastMonth'] = [0] * 31
+st['txBDaysLastMonth'] = [0] * 31
+st['rxBHrsAcc'] = [0] * 24
+st['txBHrsAcc'] = [0] * 24
+st['bHrsAccCtr'] = [0] * 24
+st['rxBQHrsAcc'] = map(lambda x: [x,x,x,x], st['rxBHrsAcc'])
+st['txBQHrsAcc'] = map(lambda x: [x,x,x,x], st['txBHrsAcc'])
+st['bQHrsAccCtr'] = map(lambda x: [x,x,x,x], st['bHrsAccCtr'])
+st['rxBHrsWAcc'] = [0] * 24 * 7
+st['txBHrsWAcc'] = [0] * 24 * 7
+st['bHrsWAccCtr'] = [0] * 24 * 7
+st['hrsMaxRateAcc'] = [0] * 24
+st['hrsMaxRateAccCtr'] = [0] * 24
+st['hrs95RateAcc'] = [0] * 24 #experimental: 95-percentile should work better than max rate
+st['hrs50RateAcc'] = [0] * 24 #experimental: median could work better than mean
+st['hrs95RateAccCtr'] = [0] * 24 #counters for both 95-percentiles and medians
+st['qHrsMaxRateAcc'] = map(lambda x: [x,x,x,x], st['hrsMaxRateAcc'])
+st['qHrsMaxRateAccCtr'] = map(lambda x: [x,x,x,x], st['hrsMaxRateAccCtr'])
+st['qHrs95RateAcc'] = map(lambda x: [x,x,x,x], st['hrs95RateAcc']) #experimental: 95-percentile should work better than max rate
+st['qHrs50RateAcc'] = map(lambda x: [x,x,x,x], st['hrs50RateAcc']) #experimental: median could work better than mean
+st['qHrs95RateAccCtr'] = map(lambda x: [x,x,x,x], st['hrs95RateAccCtr']) #counters for both 95-percentiles and medians
+st['hrsMaxRateWAcc'] = [0] * 24 * 7
+st['hrsMaxRateWAccCtr'] = [0] * 24 * 7
+st['hrs95RateWAcc'] = [0] * 24 * 7 #experimental: 95-percentile should work better than max rate
+st['hrs50RateWAcc'] = [0] * 24 * 7 #experimental: median could work better than mean
+st['hrs95RateWAccCtr'] = [0] * 24 * 7 #counters for both 95-percentiles and medians
+st['hrsAvgRateAcc'] = [0] * 24
+st['hrsAvgRateAccCtr'] = [0] * 24
+st['qHrsAvgRateAcc'] = map(lambda x: [x,x,x,x], st['hrsAvgRateAcc'])
+st['qHrsAvgRateAccCtr'] = map(lambda x: [x,x,x,x], st['hrsAvgRateAccCtr'])
+st['hrsAvgRateWAcc'] = [0] * 24 * 7
+st['hrsAvgRateWAccCtr'] = [0] * 24 * 7
+st['ip'] = ''
+st['dDNSLocked'] = False
+st['dDNSLockedUntil'] = 0
+st['dDNSConfHash'] = ''
+st['dDNSNextTest'] = 0
+statFileComplete = False
+
+
+
+class DNSUpdater():
+
+  def __init__(self):
+    if conf['dDNSProg']+conf['dDNSUpdateURIs']+conf['dDNSHosts'] != '':
+      self.enabled = True
+    else:
+      self.enabled = False
+  #end __init__
+
+
+  def GetIP_local(self, ifName):
+    ipdata = subprocess.Popen('ip addr', shell=True, stdout=subprocess.PIPE).communicate()[0]
+    reIP = re.compile(r'.*'+ifName+'.*inet (\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})', re.DOTALL)
+    return reIP.search(ipdata).group(1)
+  #end GetIP_local
+
+
+  def GetIP_web(self, site):
+    try:
+      PrintMessage('Trying to get IP from URL ' + site)
+      req = urllib2.Request(site)
+      req.add_header('User-agent', 'UMTSkeeper/'+version)
+      urlfp = urllib2.urlopen(req)
+      ipdata = urlfp.read()
+      urlfp.close()
+      # grab first thing that looks like an IP address
+      Addressgrep = re.compile('\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}')
+      ipmatch = Addressgrep.search(ipdata)
+      if ipmatch != None:
+        return ipmatch.group()
+    except Exception, e:
+      PrintMessage('Unable to open URL ' + site + ': ' + str(e))
+
+    return ''
+  #end GetIP_web
+
+
+  def GetConfHash(self):
+    return hashlib.sha256(conf['dDNSSite'] + str(conf['dDNSUseHTTP']) + str(conf['dDNSUseHTTPS']) + str(conf['dDNSPort']) + \
+      conf['dDNSHosts'] + conf['dDNSUsername'] + conf['dDNSPassword']).hexdigest()
+
+
+  def Update(self):
+    global conf, st
+
+    #unlock timer update lock:
+    if st['dDNSLockedUntil'] and (time() > st['dDNSLockedUntil']):
+      st['dDNSLockedUntil'] = 0
+      st['dDNSLocked'] = False
+
+    if st['dDNSLocked']:
+      if self.GetConfHash() != st['dDNSConfHash']: #configuration has changed -> unlock update
+        st['dDNSLocked'] = False
+      else:
+        PrintMessage('DNS update is locked (see previous errors).', False)
+
+    #call external DDNS update prog
+    if conf['dDNSProg'] != '':
+      SubprocessCallWithLog(conf['dDNSProg'])
+
+    ##################
+    # internal updater
+    elif \
+      ( (conf['dDNSUseFreeDNSMethod'] and conf['dDNSUpdateURIs'] != '') \
+        or \
+        ( (conf['dDNSSite'] != '') and \
+          (conf['dDNSHosts'] != '') and \
+          (conf['dDNSUsername'] != '') and \
+          (conf['dDNSPassword'] != '') \
+        ) \
+      ) \
+      and (not st['dDNSLocked']) \
+    :
+      if conf['ipWebsite'] != '': #get IP from website
+        ip = self.GetIP_web(conf['ipWebsite'])
+        if ip == '':
+          if conf['runDDNSRetry']:
+            conf['runDDNSRetry'] -= 1
+            st['dDNSNextTest'] = time() + 10
+          else:
+            st['dDNSNextTest'] = time() + 30 * 60
+            PrintMessage('Retry limit reached, could not get the IP from %s. Check if the address is correct and the internet connections works.' % conf['ipWebsite'], False)
+
+      else: #get local IP
+        ip = self.GetIP_local(conf['ifaceName'])
+
+      if ip == '':
+        PrintMessage('Unable to get IP.', False)
+        return(0)
+      #test for private IP:
+      elif \
+        (ip[:7] == '192.168') or \
+        (ip[:3] == '10.') or \
+        (ip[:3] == '172' and ip[6] == '.' and (int(ip[4:6]) >= 16 and int(ip[4:6]) <= 31)) or \
+        (ip == '127.0.0.1') \
+      :
+        PrintMessage('Got a private IP for interface %s: %s, but would need a public IP to update DNS. Perhaps you are connected to the internet through a gateway/firewall with address translation. In this case, your public IP can be determined with the help of an external webserver. Set a website address that returns your IP, using conf[\'ipWebsite\'].' % (conf['ifaceName'], ip), False)
+
+      else: #alright, we got an IP
+        msg = 'Got IP: %s; ' % ip
+        if ip == st['ip']:
+          PrintMessage(msg+'no change - no need for DNS update.', False)
+
+        else: #new ip does not match stored one -> update DNS
+          PrintMessage(msg+'IP has changed. Starting DNS update.', False)
+
+          #freedns style update method:
+          if conf['dDNSUseFreeDNSMethod']:
+            updateURIs = conf['dDNSUpdateURIs'].replace(' ', '').split(',') #strip spaces from hosts list
+            for uri in updateURIs:
+              req = urllib2.Request(uri)
+              req.add_header('User-agent', 'UMTSkeeper/'+version)
+              urlfp = urllib2.urlopen(req)
+              httpData = urlfp.read()
+              urlfp.close()
+              PrintMessage(httpData, False)
+          #end freedns style update method
+
+          #Members NIC Update API (dyndns style update method):
+          elif conf['dDNSHosts'] != '':
+            dDNSHosts = conf['dDNSHosts'].replace(' ', '') #strip spaces from hosts list
+            dDNSSite = conf['dDNSSite']
+            if dDNSSite[0:7] == 'http://': dDNSSite = dDNSSite[7:]
+            if dDNSSite[0:8] == 'https://': dDNSSite = dDNSSite[8:]
+            i = dDNSSite.find('/')
+            dDNSPage = dDNSSite[i:]
+            dDNSSite = dDNSSite[0:i]
+
+            if conf['dDNSSendIP']:
+              suffix = '?myip=' + ip + '&hostname=' + dDNSHosts
+            else:
+              suffix = '?myip=&hostname=' + dDNSHosts
+
+            h2 = None
+            tryHTTP = True
+            if conf['dDNSUseHTTPS']:
+              try:
+                h2 = httplib.HTTPS(conf['dDNSSite'])
+                PrintMessage('HTTPS connection to ' + dDNSSite + ' successful.', False)
+                tryHTTP = False
+              except:
+                PrintMessage('HTTPS connection to ' + dDNSSite + ' failed.', False)
+                if conf['dDNSPort'] == 443: tryHTTP = False #if port is HTTPS then skip HTTP
+
+            if conf['dDNSUseHTTP'] and tryHTTP:
+              try:
+                h2 = httplib.HTTP(dDNSSite, conf['dDNSPort'])
+                PrintMessage('HTTP connection to ' + dDNSSite + ' on port ' + str(conf['dDNSPort']) + ' successful.', False)
+              except:
+                PrintMessage('HTTP connection to ' + dDNSSite + ' on port ' + str(conf['dDNSPort']) + ' failed. Can not update DNS.', False)
+
+            if not h2: return
+
+            h2.putrequest('GET', dDNSPage + suffix)
+            h2.putheader('HOST', dDNSSite)
+            h2.putheader('USER-AGENT', 'UMTSkeeper/' + version + ' http://mintakaconciencia.net/')
+            authstring = base64.encodestring(conf['dDNSUsername'] + ':' + conf['dDNSPassword'])
+            authstring = authstring.replace('\012', '')
+            h2.putheader('AUTHORIZATION', 'Basic ' + authstring)
+            h2.endheaders()
+            errMsg = ''
+            errCode = 0
+            errCode, errMsg, headers = h2.getreply()
+
+            PrintMessage('HTTP return code: %d; %s' % (errCode, errMsg))
+
+            lockMsg = 'To prevent being blocked, DNS update is LOCKED until the configuration is corrected and UMTSkeeper is restarted.'
+            if errCode == 404:
+              PrintMessage('Received a 404 error. This means that conf[\'dDNSSite\'] or conf[\'dDNSPage\'] is wrong. '+lockMsg, False)
+              st['dDNSLocked'] = True
+
+            #get the html text
+            try:
+              f = h2.getfile()
+              httpData = f.read()
+              f.close()
+            except:
+              httpData = 'No output from HTTP request.'
+
+            #process return codes:
+            hostRes = map(lambda x: x.split(' '), httpData.split('\n'))
+            hosts = conf['dDNSHosts'].split(',')
+            for key, r in enumerate(hostRes):
+              if r[0] == 'good':
+                if r[1] == '127.0.0.1':
+                  PrintMessage(hosts[key] + ': The request was ignored because the user agent does not follow DDNS specifications. Please report to the author of UMTSkeeper.', False)
+                  st['dDNSLocked'] = True
+                else:
+                  PrintMessage(hosts[key] + ': IP updated', False)
+              elif r[0] == 'nochg':
+                PrintMessage(hosts[key] + ': IP didn\'t change', False)
+              elif r[0] == 'badauth':
+                PrintMessage('Bad authentication. The username or password is wrong. '+lockMsg, False)
+              elif r[0] == '!donator':
+                PrintMessage('An update request was sent including a feature that is not available to that particular user. '+lockMsg, False)
+              elif r[0] == 'notfqdn':
+                PrintMessage(hosts[key] + ': The hostname specified is not a fully-qualified domain name. '+lockMsg, False)
+              elif r[0] == 'nohost':
+                PrintMessage(hosts[key] + ': The hostname specified does not exist in this user account. '+lockMsg, False)
+              elif r[0] == 'numhost':
+                PrintMessage(hosts[key] + ': Too many hosts (more than 20) specified in an update. '+lockMsg, False)
+              elif r[0] == 'abuse':
+                PrintMessage(hosts[key] + ': The user specified is blocked for update abuse. '+lockMsg, False)
+              elif r[0] == 'badagent':
+                PrintMessage(hosts[key] + ': The user agent was not sent or HTTP method is not permitted. Please report to the author of UMTSkeeper.', False)
+              elif r[0] == 'dnserr':
+                PrintMessage(hosts[key] + ': DNS error encountered. This is a remote server error. DNS update will be suspended for 30 minutes. Contact your DDNS customer support if this error persists.', False)
+                st['dDNSLockedUntil'] = time() + 30 * 60
+              elif r[0] == '911':
+                PrintMessage(hosts[key] + ': There is a problem or scheduled maintenance on the DDNS side. This is a remote server error. DNS update will be suspended for 30 minutes. Contact your DDNS customer support if this error persists.', False)
+                st['dDNSLockedUntil'] = time() + 30 * 60
+
+            lockCodes = ['badauth', '!donator', 'notfqdn', 'nohost', 'numhost', 'abuse', 'badagent', 'dnserr', '911']
+            if r[0] in lockCodes: st['dDNSLocked'] = True
+          #end Members NIC Update API
+
+          if st['dDNSLocked']:
+            st['dDNSConfHash'] = self.GetConfHash()
+          else:
+            st['ip'] = ip
+        #end if ip != st['ip']
+      #end if got IP
+    #end elif conf['dDNSSite']
+
+    st['dDNSNextTest'] = time() + 30*60
+  #end Update
+
+#end class DNSUpdater
+
+
+
+class HTTPHandler(BaseHTTPRequestHandler):
+
+  def log_message(self, format, *args):
+    pass
+
+
+  def do_GET(self):
+    global conf, st
+
+    self.path = self.path[1:]
+    try:
+      #whitelist of client IPs, accept '*' wildcard at end:
+      if (not conf['httpIPList']) or \
+        (reduce( \
+          lambda x,y: x or y,
+            map(lambda a: \
+              (a[0:-1] == self.client_address[0][0:-1][0:len(a)-1]) if a[-1]=='*' \
+              else (a == self.client_address[0]), \
+              conf['httpIPList']) \
+        )):
+
+        #process URI arguments:
+        iarg = self.path.find('?')
+        if iarg >= 0:
+          args = map(lambda x: x.split('='), self.path[iarg+1:].split('&'))
+          for arg in args:
+            try:
+              if arg[0] == 'refresh': conf['runHTMLReloadInterval'] = int(arg[1])
+              elif arg[0] == 'showlog': conf['runHTMLShowLog'] = int(arg[1])
+              elif arg[0] == 'showgraphs': conf['runHTMLShowGraphs'] = int(arg[1])
+              elif arg[0] == 'reconnect': SakisReconnect()
+              elif arg[0] == 'updatedns': st['dDNSNextTest'] = time()
+            except: pass
+          self.path = self.path[0:iarg]
+
+        #whitelist of files to serve (see else: clause):
+        if (not conf['httpWhiteList']) or (self.path in conf['httpWhiteList']):
+          if conf['htmlPath'] != '': docroot = conf['htmlPath']
+          else: docroot = conf['tempPath']
+
+          if self.path == '':
+            if os.path.isfile(docroot + 'index.html'): #if index.html is found, serve that one
+              self.path = 'index.html'
+            else:
+              self.path = statFileHTMLName #else serve stat file
+
+          if (not conf['writeHTMLStats']) and (self.path == statFileHTMLName):
+            s = WriteStatFileHTML(True)
+          else:
+            f = open(docroot + self.path)
+            s = f.read()
+            f.close()
+
+          self.send_response(200)
+          self.send_header('Content-type',	'text/html')
+          self.end_headers()
+          self.wfile.write(s)
+
+        else: #file not found in whitelist
+          self.send_error(403,'Forbidden: %s' % self.path)
+
+      else: #ip not in ip whitelist
+        self.send_error(403,'Access denied by IP whitelist')
+
+    except IOError:
+      self.send_error(404,'File Not Found: %s' % self.path)
+
+#end class HTTPHandler
+
+class ThreadedHTTPServer(HTTPServer):
+  def serve(self):
+    while 1:
+      self.handle_request()
+
+
+
+class Graph:
+
+  def __init__(self, \
+    which='', fileName='', values=[], width=0, xTextPos=10, plotMargin=[2,0,0,2], graphMargin=[0,0,0,0], \
+    drawXScale=False, drawXScaleMarks=False, xScaleMajor=0, xScaleMinor=0, \
+    xText=[], xTextOffs=0, fontStyle='font-family:sans-serif', fontSize=8, \
+    yAxisPos=0, graphMaxPreset=0, yScale=0, yScaleMajor=0, yScaleMinor=0, yGridMajor=True, yGridMinor=True, \
+    barWidth=[14,14,4,4], barDist=[16,16,4,4], barStyles=['fill:#df2f2f','fill:#2fbf2f','fill:#ff70d0;fill-opacity:0.75','fill:70ffd0;fill-opacity:0.75'] \
+  ):
+    self.which = which
+    self.fileName = fileName
+    self.file = conf['tempPath'] + self.fileName
+    self.values = values
+    self.horLines = []
+    self.vertLines = []
+    self.valScaled = []
+    self.width = width
+    self.height = 0
+    self.xTextPos = xTextPos
+    self.plotMargin = plotMargin #margin around plot area (area inside the axes)
+    self.graphMargin = graphMargin #margin around whole graph (including axes and scales)
+    self.margin = map(lambda pm,gm: pm+gm, self.plotMargin, self.graphMargin) #margins for everything in plot area
+    self.drawXScale = drawXScale
+    self.drawXScaleMarks = drawXScaleMarks
+    self.xScaleMajor = xScaleMajor
+    self.xScaleMinor = xScaleMinor
+    self.xText = xText
+    self.xTextOffs = xTextOffs
+    self.fontStyle = fontStyle
+    self.fontSize = fontSize
+    self.yAxisPos = yAxisPos
+    self.graphMaxPreset = graphMaxPreset
+    self.graphMax = 0
+    self.yScale = yScale
+    self.xAxisPos = 0
+    self.yScaleMajor = yScaleMajor
+    self.yScaleMinor = yScaleMinor
+    self.yGridMajor = yGridMajor
+    self.yGridMinor = yGridMinor
+    self.barWidth = barWidth
+    self.barDist = barDist
+    self.barStyles = barStyles
+    self.svg = ''
+    self.refresh = True
+  #end __init__
+
+
+  def InitGraph(self, maxValue):
+    self.graphMax = self.graphMaxPreset
+    if maxValue > self.graphMax: self.graphMax = maxValue
+    self.horLines = sorted(self.horLines)
+    if (len(self.horLines) > 0) and (self.horLines[-1][0] > self.graphMax):
+      self.graphMax = self.horLines[-1][0]
+    self.xAxisPos = self.margin[0] + self.graphMax / self.yScale
+    self.height = self.xAxisPos + self.xTextPos + self.margin[2] + 1
+    self.yAxisPos = self.margin[3] + len(self.values[0]) * self.barDist[0]
+    if self.width == 0: self.width = self.yAxisPos + 33 + self.margin[1]
+    self.valScaled = []
+  #end InitGraph
+
+
+  def AddBarData(self, upEnd, lowEndScaled=False):
+    #compile list of boxes to draw for two sets of boxes: [[[y0,y1,y2...],[h0,h1,h2...]...], [[y0,y1,y2...],[h0,h1,h2...]...]]
+    self.valScaled.append( \
+      [ ([1]*len(upEnd) if not lowEndScaled \
+        else map(lambda x: x+1, lowEndScaled)), map(lambda x: (float(x)/self.yScale), upEnd) \
+      ] \
+    )
+  #end AddBarData
+
+
+  def SVGStart(self):
+    self.svg = '<svg xmlns="http://www.w3.org/2000/svg" version="1.1" viewbox="0 0 %d %d" preserveAspectRatio="xMinYMin meet" style="%s;font-size:%dpx">' % (self.width, self.height, self.fontStyle, self.fontSize)
+    self.svg += '<rect x="%d" y="%d" width="%d" height="%d" style="fill:#e0e0e0"/>' % (self.graphMargin[3], self.graphMargin[0], self.yAxisPos-self.graphMargin[3], self.xAxisPos-self.graphMargin[0]) #shaded background
+  #end SVGStart
+
+
+  def DrawHorizontalScale(self):
+    ap = self.xAxisPos + 0.5
+    self.svg += '<g style="stroke:rgb(0,0,0);shape-rendering:crispEdges">'
+    #x-axis line
+    self.svg += '<line x1="%d" y1="%d" x2="%d" y2="%d"/>' % (self.graphMargin[3], ap, self.yAxisPos+0.5, ap)
+
+    if self.drawXScale:
+      scaleMarkDist = self.xScaleMinor * self.barDist[0]
+
+      for i in range(0, (self.yAxisPos-self.margin[3])/scaleMarkDist):
+        if i % (self.xScaleMajor / self.xScaleMinor) == 0: #major scale
+          if i > 0:
+            if self.drawXScaleMarks:
+              #major scale marks
+              x = self.margin[3]+i*scaleMarkDist
+              self.svg += '<line x1="%d" y1="%d" x2="%d" y2="%d" style="stroke:rgb(0,0,0)"/>' % \
+                (x, ap, x, self.xAxisPos+7)
+          #major scale text
+          self.svg += '<text x="%d" y="%d">%s</text>' % \
+            ( self.margin[3]+i*scaleMarkDist+self.xTextOffs, \
+              self.xAxisPos+self.xTextPos, \
+              self.xText[i/(self.xScaleMajor/self.xScaleMinor)] \
+            )
+        elif self.xScaleMinor != self.xScaleMajor: #minor scale: marks can be turned off by setting minor scale = major scale
+          if self.drawXScaleMarks > 0:
+            #minor scale marks
+            x = self.margin[3]+i*scaleMarkDist
+            self.svg += '<line x1="%d" y1="%d" x2="%d" y2="%d" style="stroke:rgb(0,0,0)"/>' % \
+              (x, ap, x, self.xAxisPos+4)
+    self.svg += '</g>'
+  #end DrawHorizontalScale
+
+
+  def DrawVertScale(self):
+    scaleMarkDist = self.yScaleMinor / self.yScale
+    markerDiv = 1
+    if self.yScaleMajor > 999999999:
+      markerDiv = 1000000000
+      markerChar = "G"
+    elif self.yScaleMajor > 999999:
+      markerDiv = 1000000
+      markerChar = "M"
+    elif self.yScaleMajor > 999:
+      markerDiv = 1000
+      markerChar = "k"
+
+    ap = self.yAxisPos + 0.5
+    self.svg += '<g style="stroke:rgb(0,0,0);shape-rendering:crispEdges">'
+    #y-axis line
+    self.svg += '<line x1="%d" y1="%d" x2="%d" y2="%d"/>' % (ap, self.graphMargin[0], ap, self.xAxisPos+1)
+    for i in range(1, int((self.xAxisPos-self.margin[0])/scaleMarkDist)+1):
+      y = self.xAxisPos - (i * scaleMarkDist)
+      if i % (self.yScaleMajor / self.yScaleMinor) == 0: #major scale
+        #major scale marks
+        self.svg += '<line x1="%d" y1="%d" x2="%d" y2="%d"/>' % (ap, y, ap+7, y)
+        if i > 0:
+          #major scale text
+          self.svg += '<text x="%d" y="%d">%d%s</text>' % (ap+10, y+self.fontSize/2-1, (i*self.yScaleMinor)/markerDiv, markerChar)
+          if self.yGridMajor:
+            #major grid
+            self.svg += '<line x1="%d" y1="%d" x2="%d" y2="%d" style="stroke:#a0a0a0;stroke-opacity:0.4"/>' % \
+              (self.margin[3], y, ap-0.5, y)
+      else: #minor scale
+        #minor scale marks
+        self.svg += '<line x1="%d" y1="%d" x2="%d" y2="%d"/>' % (ap, y, ap+4, y)
+        if self.yGridMinor:
+          #minor grid
+          self.svg += '<line x1="%d" y1="%d" x2="%d" y2="%d" style="stroke:#c0c0c0;stroke-opacity:0.4"/>' % \
+            (self.margin[3], y, ap-0.5, y)
+    self.svg += '</g>'
+  #end DrawVertScale
+
+
+  def DrawBars(self, addsFront, addsBack):
+    self.svg += addsBack
+    for j in range(0, len(self.valScaled)):
+      self.svg += '<g style="%s">' % (self.barStyles[j]) #group bars for style
+      #reduce box coordinates list to svg:
+      self.svg += reduce(lambda s1,s2: s1+s2, \
+        map( \
+          lambda y,h: ( \
+            '<rect x="%d" y="%.1f" width="%d" height="%.1f"/>' %
+              (self.margin[3]+y[0]*self.barDist[j], self.xAxisPos-y[1]-h+1, self.barWidth[j], h) \
+          ) if h>0.25 else '', \
+          list(enumerate(self.valScaled[j][0])), self.valScaled[j][1] \
+        ) \
+      )
+      self.svg += '</g>'
+
+    self.svg += addsFront
+  #end DrawBars
+
+
+  def DrawLines(self):
+    self.svg += '<g style="shape-rendering:crispEdges">'
+    lh = self.fontSize + 2
+    i = self.xAxisPos - 2
+    ty1 = self.xAxisPos - 2 + lh
+    lineList = list(enumerate(self.horLines))
+    for l in lineList:
+      #spacing the captions:
+      ty = self.xAxisPos - l[1][0] / self.yScale
+      if ty > (ty1 - lh): ty = ty1 - lh
+      if ty < (self.margin[0] + self.fontSize/2 + (len(lineList)-1-l[0])*lh):
+        ty = self.margin[0] + self.fontSize/2 + (len(lineList)-1-l[0])*lh
+      #horizontal line:
+      self.svg += '<line x1="%d" y1="%d" x2="%d" y2="%d" style="%s"/>' % \
+        ( self.margin[3], \
+          self.xAxisPos - l[1][0] / self.yScale, \
+          self.yAxisPos, \
+          self.xAxisPos - l[1][0] / self.yScale, \
+          l[1][1] \
+        )
+      if l[1][2] != '':
+        #connecting line to caption:
+        self.svg += '<line x1="%d" y1="%d" x2="%d" y2="%d" style="%s"/>' % \
+          ( self.margin[3], \
+            self.xAxisPos - l[1][0] / self.yScale, \
+            self.margin[3] - lh, \
+            ty, \
+            l[1][1] \
+          )
+        #caption text:
+        self.svg += '<text x="%d" y="%d" text-anchor="end">%s</text>' % \
+          (self.margin[3]-12, ty+self.fontSize/2-1, l[1][2])
+      ty1 = ty
+      i -= lh
+
+    self.svg += '</g>'
+  #end DrawLines
+
+
+  def SVGEnd(self):
+    self.svg += '</svg>'
+  #end SVGEnd
+
+
+  def ComposeSVG(self, addsFront='', addsBack=''):
+    self.SVGStart()
+    self.DrawHorizontalScale()
+    self.DrawBars(addsFront, addsBack)
+    self.DrawVertScale()
+    self.DrawLines()
+    self.SVGEnd()
+  #end ComposeSVG
+
+
+  def Draw(self):
+    s = ''
+
+    #'seconds' graph:
+    if self.which == 'sec':
+      self.values = [txRateSeconds, rxRateSeconds]
+
+      st['rateSecondsHr'].sort()
+      self.horLines = []
+#      self.horLines.append([st['rateSecondsHr'][-1], 'stroke:rgb(64,64,160)', 'maximum: %d' % (st['rateSecondsHr'][int(len(st['rateSecondsHr'])*0.99)])])
+      self.horLines.append([st['rateSecondsHr'][int(len(st['rateSecondsHr'])*0.95)], 'stroke:#6060a0;stroke-opacity:0.8', '95-percentile: %d' % (st['rateSecondsHr'][int(len(st['rateSecondsHr'])*0.95)])])
+      hr95 = int(st['hrs95RateWAcc'][st['currHr'] + 24 * (st['weekDay'] - 1)] / (st['hrs95RateWAccCtr'][st['currHr'] + 24 * (st['weekDay'] - 1)] + 1e-6)) #get 95-percentile for this hour of the week
+      self.horLines.append([hr95, 'stroke:#a0a0c0;stroke-opacity:0.8', 'exp. 95%%: %d' % hr95])
+#      self.horLines.append([st['rateSecondsHr'][int(len(st['rateSecondsHr'])*0.90)], 'stroke:rgb(128,128,224)', '90-percentile: %d' % (st['rateSecondsHr'][int(len(st['rateSecondsHr'])*0.90)])])
+#      self.horLines.append([st['rateSecondsHr'][int(len(st['rateSecondsHr'])*0.50)], 'stroke:rgb(96,96,192)', 'median: %d' % (st['rateSecondsHr'][int(len(st['rateSecondsHr'])*0.50)])])
+      self.horLines.append([st['hrAvgRateAcc'] / (st['hrAvgRateAccCtr']+1e-6), 'stroke:#a04000;stroke-opacity:0.8', 'hour mean: %d' % (st['hrAvgRateAcc'] / (st['hrAvgRateAccCtr']+1e-6))])
+      hrAvg = int(st['hrsAvgRateWAcc'][st['currHr'] + 24 * (st['weekDay'] - 1)] / (st['hrsAvgRateWAccCtr'][st['currHr'] + 24 * (st['weekDay'] - 1)] + 1e-6)) #get average for this hour of the week
+      self.horLines.append([hrAvg, 'stroke:#a0a000;stroke-opacity:0.8', 'exp. mean: %d' % hrAvg])
+
+      self.graphMaxPreset = len(self.horLines) * (self.fontSize + 2) * self.yScale
+      self.InitGraph(max(map(lambda x,y: x+y, self.values[0], self.values[1])))
+
+      #'seconds' rate graph has a special dynamic x scale:
+      ti = 15
+      markMinDist = 1.5
+      i = len(timeRateSeconds)-2
+      t0 = timeRateSeconds[i+1]
+      x1 = self.yAxisPos
+      s += '<g style="stroke:rgb(0,0,0);shape-rendering:crispEdges">'
+      while i > 0:
+        t = timeRateSeconds[i]
+        if (t > 0):
+          if t0-t >= ti:
+            x = self.yAxisPos - (len(timeRateSeconds) - 1 - InterpolLin(t0-t, i, t0-timeRateSeconds[i+1], i+1, ti)) * self.barDist[0] #nicely interpolate scale mark position: looks way better
+            if (x1 - x) >= markMinDist:
+              x1 = x
+              if ti%4 == 0:
+                #major scale marks
+                s += '<line x1="%d" y1="%d" x2="%d" y2="%d" style="stroke:rgb(0,0,0)"/>' % \
+                  ( x, self.xAxisPos+0.5, \
+                    x, self.xAxisPos+7)
+                #major scale text
+                s += '<text x="%d" y="%d">%s</text>' % \
+                  ( x+self.xTextOffs, \
+                    self.xAxisPos+self.xTextPos, \
+                    str(ti/60) \
+                  )
+              else:
+                #minor scale marks
+                s += '<line x1="%d" y1="%d" x2="%d" y2="%d" style="stroke:rgb(0,0,0)"/>' % \
+                  ( x, self.xAxisPos+0.5, \
+                    x, self.xAxisPos+4)
+            ti += 15
+            i += 1 #try the same bar again (reconnects may have 15+ sec in one bar)
+          #end if (x1 - x) >= markMinDist
+        #end if t > 0
+        i -= 1
+      #end for t
+      s += '</g>'
+
+      self.AddBarData(self.values[0])
+      self.AddBarData(self.values[1], self.valScaled[0][1])
+    #end 'seconds' graph
+
+    #'hours' graph:
+    elif self.which == 'hrs':
+      self.values = [ \
+        st['txBHrsYesday'] + st['txBHrs'], \
+        st['rxBHrsYesday'] + st['rxBHrs'], \
+        reduce(lambda y1,y2: y1+y2, st['txBQHrsYesday']) + reduce(lambda y1,y2: y1+y2, st['txBQHrs']), \
+        reduce(lambda y1,y2: y1+y2, st['rxBQHrsYesday']) + reduce(lambda y1,y2: y1+y2, st['rxBQHrs']) \
+      ]
+      self.InitGraph(max(map(lambda x,y: x+y, self.values[0], self.values[1])))
+      self.AddBarData(self.values[0])
+      self.AddBarData(self.values[1], self.valScaled[0][1])
+      self.AddBarData(self.values[2])
+      self.AddBarData(self.values[3], self.valScaled[2][1])
+
+    #'days' graph:
+    elif self.which == 'days':
+      self.values = [ \
+        st['txBDaysLastMonth'] + st['txBDays'], \
+        st['rxBDaysLastMonth'] + st['rxBDays'], \
+      ]
+      self.yAxisPos = self.barDist[0] * len(self.values[0])
+      self.width = self.yAxisPos + 33
+      #get a list of day numbers for last month and current month:
+      self.xText = \
+        map(lambda x: '%02d' % (x[0]+1), list(enumerate(st['rxBDaysLastMonth']))) + \
+        map(lambda x: '%02d' % (x[0]+1), list(enumerate(st['rxBDays'])))
+      self.InitGraph(max(map(lambda x,y: x+y, self.values[0], self.values[1])))
+      self.AddBarData(self.values[0])
+      self.AddBarData(self.values[1], self.valScaled[0][1])
+
+    #'hours average week' graph:
+    elif self.which == 'hrsWAcc':
+      self.values = [ \
+        map(lambda x,n: x/(n+1e-6), st['txBHrsWAcc'], st['bHrsWAccCtr']), \
+        map(lambda x,n: x/(n+1e-6), st['rxBHrsWAcc'], st['bHrsWAccCtr']), \
+      ]
+      self.InitGraph(max(map(lambda x,y: x+y, self.values[0], self.values[1])))
+      self.AddBarData(self.values[0])
+      self.AddBarData(self.values[1], self.valScaled[0][1])
+
+    #'hours avgrate' graph:
+    elif self.which == 'hrsAvgRate':
+      self.values = [ \
+#        map(lambda x,n: x/(n+1e-6), st['hrsAvgRateAcc'], st['hrsAvgRateAccCtr']), \
+        map(lambda x,n: x/(n+1e-6), reduce(lambda y1,y2: y1+y2, st['qHrsAvgRateAcc']), reduce(lambda y1,y2: y1+y2, st['qHrsAvgRateAccCtr'])), \
+        map(lambda x,n: x/(n+1e-6), reduce(lambda y1,y2: y1+y2, st['qHrs50RateAcc']), reduce(lambda y1,y2: y1+y2, st['qHrs95RateAccCtr'])) \
+      ]
+      self.InitGraph(max(self.values[0] + self.values[1]))
+      self.AddBarData(self.values[0])
+      self.AddBarData(self.values[1])
+
+    #'hours maxrate' graph:
+    elif self.which == 'hrsMaxRate':
+      self.values = [ \
+#        map(lambda x,n: x/(n+1e-6), st['hrsMaxRateAcc'], st['hrsMaxRateAccCtr']), \
+        map(lambda x,n: x/(n+1e-6), reduce(lambda y1,y2: y1+y2, st['qHrsMaxRateAcc']), reduce(lambda y1,y2: y1+y2, st['qHrsMaxRateAccCtr'])), \
+        map(lambda x,n: x/(n+1e-6), reduce(lambda y1,y2: y1+y2, st['qHrs95RateAcc']), reduce(lambda y1,y2: y1+y2, st['qHrs95RateAccCtr'])) \
+      ]
+      self.InitGraph(max(self.values[0] + self.values[1]))
+      self.AddBarData(self.values[0])
+      self.AddBarData(self.values[1])
+
+    #'hours average rate week' graph:
+    elif self.which == 'hrsAvgRateW':
+      self.values = [ \
+        map(lambda x,n: x/(n+1e-6), st['hrsAvgRateWAcc'], st['hrsAvgRateWAccCtr']), \
+        map(lambda x,n: x/(n+1e-6), st['hrs50RateWAcc'], st['hrs95RateWAccCtr']) \
+      ]
+      self.InitGraph(max(self.values[0] + self.values[1]))
+      self.AddBarData(self.values[0])
+      self.AddBarData(self.values[1])
+
+    #'hours max rate week' graph:
+    elif self.which == 'hrsMaxRateW':
+      self.values = [ \
+        map(lambda x,n: x/(n+1e-6), st['hrsMaxRateWAcc'], st['hrsMaxRateWAccCtr']), \
+        map(lambda x,n: x/(n+1e-6), st['hrs95RateWAcc'], st['hrs95RateWAccCtr']) \
+      ]
+      self.InitGraph(max(self.values[0] + self.values[1]))
+      self.AddBarData(self.values[0])
+      self.AddBarData(self.values[1])
+
+    #'hours average' graph:
+    elif self.which == 'hrsAcc':
+      ctr = reduce(lambda y1,y2: y1+y2, st['bQHrsAccCtr'])
+      self.values = [ \
+        map(lambda x,n: x/(n+1e-6), st['txBHrsAcc'], st['bHrsAccCtr']), \
+        map(lambda x,n: x/(n+1e-6), st['rxBHrsAcc'], st['bHrsAccCtr']), \
+        map(lambda x,n: x/(n+1e-6), reduce(lambda y1,y2: y1+y2, st['txBQHrsAcc']), ctr), \
+        map(lambda x,n: x/(n+1e-6), reduce(lambda y1,y2: y1+y2, st['rxBQHrsAcc']), ctr)
+      ]
+      self.InitGraph(max(map(lambda x,y: x+y, self.values[0], self.values[1])))
+      self.AddBarData(self.values[0])
+      self.AddBarData(self.values[1], self.valScaled[0][1])
+      self.AddBarData(self.values[2])
+      self.AddBarData(self.values[3], self.valScaled[2][1])
+
+    #end if self.which
+
+    self.ComposeSVG(addsFront=s)
+    self.refresh = False
+
+#     #write svg to file: no need for this if we use inline svg
+#     f = file(self.file, 'w')
+#     f.write('<?xml version="1.0" ?>\n<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">\n')
+#     f.write(self.svg)
+#     f.close()
+#     CopyToHTMLPath(self.file)
+  #end DrawGraph
+
+#end class Graph
+
+
+def SetupGraphs():
+  global graphs
+
+  graphs['sec'] = Graph( \
+    which='sec', fileName='seconds.svg', xTextPos=15, xTextOffs=-2, graphMargin=[0,0,0,100], \
+    yScale=conf['secGraph']['scale']*1000, yScaleMajor=conf['secGraph']['markMajor']*1000, yScaleMinor=conf['secGraph']['markMinor']*1000, \
+    barWidth=[4,4], barDist=[4,4], yGridMinor=False \
+  )
+
+  graphs['hrs'] = Graph( \
+    which='hrs', fileName='hours-day.svg', \
+    xText='00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 21 22 23 00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 21 22 23'.split(' '), \
+    xTextOffs=2, drawXScale=True, xScaleMinor=1, xScaleMajor=1, \
+    yScale=conf['hoursGraph']['scale']*1000, yScaleMajor=conf['hoursGraph']['markMajor']*1000, yScaleMinor=conf['hoursGraph']['markMinor']*1000, \
+    yGridMinor=True \
+  )
+
+  graphs['hrsAcc'] = Graph( \
+    which='hrsAcc', fileName='hours-acc.svg', \
+    xText='00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 21 22 23'.split(' '), \
+    xTextOffs=2, drawXScale=True, xScaleMinor=1, xScaleMajor=1, \
+    yScale=conf['hoursAvgGraph']['scale']*1000, yScaleMajor=conf['hoursAvgGraph']['markMajor']*1000, yScaleMinor=conf['hoursAvgGraph']['markMinor']*1000, \
+    yGridMinor=True \
+  )
+
+  graphs['hrsWAcc'] = Graph( \
+    which='hrsWAcc', fileName='hours-week-acc.svg', \
+    xText='Mon Tue Wed Thu Fri Sat Sun'.split(' '), \
+    xTextOffs=2, drawXScale=True, drawXScaleMarks=True, xScaleMinor=6, xScaleMajor=24, \
+    barWidth=[4,4], barDist=[4,4], \
+    yScale=conf['hoursAvgGraph']['scale']*1000, yScaleMajor=conf['hoursAvgGraph']['markMajor']*1000, yScaleMinor=conf['hoursAvgGraph']['markMinor']*1000, \
+    yGridMinor=True \
+  )
+
+  graphs['hrsAvgRateW'] = Graph( \
+    which='hrsAvgRateW', fileName='hours-avgrate-week.svg', \
+    xText='Mon Tue Wed Thu Fri Sat Sun'.split(' '), \
+    xTextOffs=2, drawXScale=True, drawXScaleMarks=True, xScaleMinor=6, xScaleMajor=24, \
+    barWidth=[4,4], barDist=[4,4], barStyles=['fill:rgb(63,63,63)','fill:rgb(127,127,256);fill-opacity:0.7'], \
+    yScale=conf['secGraph']['scale']*1000, yScaleMajor=conf['secGraph']['markMajor']*1000, yScaleMinor=conf['secGraph']['markMinor']*1000, \
+    yGridMinor=True \
+  )
+
+  graphs['hrsMaxRateW'] = Graph( \
+    which='hrsMaxRateW', fileName='hours-maxrate-week.svg', \
+    xText='Mon Tue Wed Thu Fri Sat Sun'.split(' '), \
+    xTextOffs=2, drawXScale=True, drawXScaleMarks=True, xScaleMinor=6, xScaleMajor=24, \
+    barWidth=[4,4], barDist=[4,4], barStyles=['fill:rgb(63,63,63)','fill:rgb(127,127,256);fill-opacity:0.7'], \
+    yScale=conf['secGraph']['scale']*1000, yScaleMajor=conf['secGraph']['markMajor']*1000, yScaleMinor=conf['secGraph']['markMinor']*1000, \
+    yGridMinor=True \
+  )
+
+  graphs['hrsMaxRate'] = Graph( \
+    which='hrsMaxRate', fileName='hours-maxrate.svg', \
+    xText='00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 21 22 23'.split(' '), \
+    xTextOffs=3, drawXScale=True, drawXScaleMarks=True, xScaleMinor=4, xScaleMajor=4, \
+    barWidth=[4,4], barDist=[4,4], barStyles=['fill:rgb(63,63,63)','fill:rgb(127,127,256);fill-opacity:0.7'], \
+    yScale=conf['secGraph']['scale']*1000, yScaleMajor=conf['secGraph']['markMajor']*1000, yScaleMinor=conf['secGraph']['markMinor']*1000, \
+    yGridMinor=False \
+  )
+
+  graphs['hrsAvgRate'] = Graph( \
+    which='hrsAvgRate', fileName='hours-avgrate.svg', \
+    xText='00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 21 22 23'.split(' '), \
+    xTextOffs=3, drawXScale=True, drawXScaleMarks=True, xScaleMinor=4, xScaleMajor=4, \
+    barWidth=[4,4], barDist=[4,4], barStyles=['fill:rgb(63,63,63)','fill:rgb(127,127,256);fill-opacity:0.7'], \
+    yScale=conf['secGraph']['scale']*1000, yScaleMajor=conf['secGraph']['markMajor']*1000, yScaleMinor=conf['secGraph']['markMinor']*1000, \
+    yGridMinor=False \
+  )
+
+  graphs['days'] = Graph( \
+    which='days', fileName='days-month.svg', \
+    xTextOffs=1, drawXScale=True, xScaleMinor=1, xScaleMajor=1, \
+    barWidth=[13,13], barDist=[15,15], \
+    yScale=conf['daysGraph']['scale']*1000, yScaleMajor=conf['daysGraph']['markMajor']*1000, yScaleMinor=conf['daysGraph']['markMinor']*1000, \
+    yGridMinor=True \
+  )
+#end SetupGraphs
+
+
+def RefreshGraphs(which=['all']):
+  if which[0] == 'all':
+    for g in graphs:
+      if graphs[g].refresh: graphs[g].Draw()
+  else:
+    for w in which:
+      if graphs[w].refresh: graphs[w].Draw()
+#end RefreshGraphs
+
+
+def InterpolLin(x1, y1, x2, y2, xm):
+  return y1 + ((xm-x1) * (y2-y1)) / (x2-x1)
+
+
+def GetTime():
+  return strftime('%Y-%m-%d %H:%M:%S')
+
+
+def LogMsg(msg):
+  f = open(conf['logFile'], 'a')
+  f.write(msg)
+  f.close()
+#end LogMsg
+
+
+def PrintMessage(msgText, timeStamp = True):
+  global intLog
+
+  if timeStamp == 1:
+    msg = GetTime() + ' ' + msgText
+  else:
+    msg = '  ' + msgText
+
+  if conf['printMsg']:
+    print msg
+  if conf['logMsg']:
+    LogMsg(msg + '\n')
+
+  msg = msg.replace('<', '&lt;').replace('>', '&gt;') #HTML escape
+  intLog.append(msg+'\n')
+  if len(intLog) > 100: intLog.pop(0)
+#end PrintMessage
+
+
+def SubprocessCallWithLog(command):
+  global conf
+
+  args = shlex.split(command)
+  proc = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+  proc.wait()
+  (out, err, errorCode) = (proc.stdout.read(), proc.stderr.read(), proc.returncode)
+  proc.stdout.close()
+  proc.stderr.close()
+  if out:
+    if out[-1] == '\n': out = out[0:-1]
+    PrintMessage(out, False)
+  if err:
+    if err[-1] == '\n': out = out[0:-1]
+    PrintMessage('Error: '+err, False)
+
+  return errorCode
+#end SubprocessCallWithLog
+
+
+def SetupLogFiles():
+  try:
+    f = file(monthlyFile, 'r')
+  except IOError:
+    PrintMessage('Monthly stats file not found, setting up a new one.', 0)
+    f = file(monthlyFile, 'w')
+    f.write('Year;Month;Down;Up;Total\n')
+    f.close()
+
+  try:
+    f = file(dailyFile, 'r')
+  except IOError:
+    PrintMessage('Daily stats file not found, setting up a new one.', 0)
+    f = file(dailyFile, 'w')
+    f.write('Date;Weekday;Down;Up;Total\n')
+    f.close()
+
+  try:
+    f = file(hourlyFile, 'r')
+  except IOError:
+    PrintMessage('Hourly stats file not found, setting up a new one.', 0)
+    f = file(hourlyFile, 'w')
+    f.write('Date;Hour;Down;Up;Total;max Rate;avg Rate;avg Rate values;95% Rate\n')
+    f.close()
+#end SetupLogFiles
+
+
+def SakisStatus():
+  global netOperstate, modemPlugged
+
+  #this file contains up/down info only with static networks (else 'unknown'); try if we have one:
+  try:
+    f = file('/sys/class/net/' + conf['ifaceName'] +  '/operstate', 'r')
+  except IOError: #file does not exist -> ignore
+    netOperstate = ''
+  else: #file exists
+    netOperstate = f.read()[0:-1] #read ifaceName up/down status
+    PrintMessage('Network link status on ' + conf['ifaceName'] + ': ' + netOperstate, 0)
+    f.close()
+
+  #get status of a cellphone network:
+  if not conf['logOnly']:
+    err = 'Cell network: '
+    errorCode = subprocess.call(sakisProg + ' silent status', shell=True) #returns 0 if connected
+    if errorCode == 0:
+      err = err + 'Connected.'
+    elif errorCode == 6:
+      errorCode = subprocess.call(sakisProg + ' silent plugged', shell=True) #returns 1 if plugged
+      if errorCode == 0:
+        err = err + 'Modem plugged, not connected to internet.'
+        modemPlugged = 1
+      else:
+        err = err + 'No modem plugged.'
+        modemPlugged = 0
+    else:
+      GetSakisErrorMsg(errorCode)
+      err = err + 'Error ' + errorCode + ' occurred: ' + errorMsg
+
+    PrintMessage(err, 0)
+#end SakisStatus
+
+
+def GetSakisErrorMsg(errorCode):
+  if errorCode == 0: errorMsg = 'No error, or Connected'
+  elif errorCode == 1: errorMsg = 'Failed to become root through sudo, or Unexpected internal error'
+  elif errorCode == 2: errorMsg = 'Reserved'
+  elif errorCode == 3: errorMsg = 'No method for acquiring root privileges'
+  elif errorCode == 4: errorMsg = 'Required utility not found within PATH'
+  elif errorCode == 5: errorMsg = 'Sakis3G not found within PATH'
+  elif errorCode == 6: errorMsg = 'Not connected, or unable to detect if connected'
+  elif errorCode == 7: errorMsg = 'Unable to locate/enumerate connected USB devices'
+  elif errorCode == 8: errorMsg = 'Error while setting up modem'
+  elif errorCode == 9: errorMsg = 'Failed to unload existing driver'
+  elif errorCode == 10: errorMsg = 'Failed to locate appropriate driver for use with USB modem'
+  elif errorCode == 11: errorMsg = 'Failed to load appropriate driver for USB modem'
+  elif errorCode == 12: errorMsg = 'Wrong PIN. Aborting to prevent SIM LOCK'
+  elif errorCode == 13: errorMsg = 'Modem is unable to register a network'
+  elif errorCode == 95: errorMsg = 'Failed to connect (wvdial or pppd failed to connect)'
+  elif errorCode == 98: errorMsg = 'User interaction required or user requested to terminate'
+  elif errorCode == 99: errorMsg = 'Unknown error'
+
+  return(errorMsg)
+#end GetSakisErrorMsg
+
+
+def SakisReconnect():
+  global sakisLockedUntil, sakisFailCtr
+  sakisLockedUntil = 0
+  sakisFailCtr = 0
+  PrintMessage('Retrying to connect')
+#end SakisReconnect
+
+
+#numbers logging
+def DoStats():
+  global st, offlineSinceTmp, uSecond, intuSecond
+  global newSession, sessionStartTime, rxBytes, txBytes, currRate, rxCurrRate, txCurrRate, lastDayOfMonth
+  global rxRateSeconds, txRateSeconds, timeRateSeconds, remainingBytesDaily, statFileComplete
+
+  if not conf['writeStats']:
+    return 0
+
+  offlineSinceTmp = st['offlSince']
+#  ReadStatFile()
+  if offlineSinceTmp == '':
+    st['offlSince'] = ''
+
+  if sessionStartTime == '':
+    sessionStartTime = st['sessStartTmSaved']
+  else:
+    st['sessStartTmSaved'] = sessionStartTime
+
+  if not limitExceeded:
+    uSecond = time() #millisecond float value
+    intuSecond = uSecond - st['lastuSec']
+
+    if (netOperstate == "up") or (netOperstate == "unknown"):
+      try:
+        f = file('/sys/class/net/' + conf['ifaceName'] + '/statistics/rx_bytes', 'r')
+        rxBytes = int(f.read())
+        f.close
+        f = file('/sys/class/net/' + conf['ifaceName'] + '/statistics/tx_bytes', 'r')
+        txBytes = int(f.read())
+        f.close
+      except IOError: return 0 #in this case, network device is not present (meanwhile unplugged)
+    #end if (netOperstate == "up") or (netOperstate == "unknown")
+  #end if not limitExceeded
+
+  st['lastuSec'] = uSecond
+
+  #if interface changes (user starts prog for logging LAN, then for 3G, then again for LAN): this can give
+  #awkward numbers, since LAN transfer counters were not reset in between, but umtskeeper did.
+  if conf['ifaceName'] != st['ifaceName']:
+    st['rxBytes'] = rxBytes
+    st['txBytes'] = txBytes
+    SessionStart()
+
+  if newSession: #newly connected to internet, detected in main procedure
+    st['rxBSessStart'] = st['rxBTot']
+    st['txBSessStart'] = st['txBTot']
+    st['ifaceName'] = conf['ifaceName']
+    newSession = False
+
+  #check if byte counters are lower than saved ones -> we have a new internet session
+  #we have to check both rx and tx because the counters may be 32-bit integers that overflow to 0 at 4 GiB
+  if (rxBytes < st['rxBytes']) or (txBytes < st['txBytes']):
+    SessionStart()
+    if (rxBytes < st['rxBytes']): st['rxBSessStart'] = st['rxBTot']
+    if (txBytes < st['txBytes']): st['txBSessStart'] = st['txBTot']
+    newSession = False
+
+  currRate = int((rxBytes + txBytes - st['rxBytes'] - st['txBytes']) / intuSecond)
+
+  if currRate < 0: currRate = 0
+  rxCurrRate = int((rxBytes - st['rxBytes']) / intuSecond)
+  if rxCurrRate < 0: rxCurrRate = 0
+  txCurrRate = int((txBytes - st['txBytes']) / intuSecond)
+  if txCurrRate < 0: txCurrRate = 0
+
+  if currRate > st['qHrMaxRate']:
+    st['qHrMaxRate'] = currRate
+    if currRate > st['hrMaxRate']:
+      st['hrMaxRate'] = currRate
+  if currRate >= conf['rateThreshold']:
+    st['qHrAvgRateAcc'] += currRate
+    st['qHrAvgRateAccCtr'] += 1
+    st['hrAvgRateAcc'] += currRate
+    st['hrAvgRateAccCtr'] += 1
+    st['rateSecondsHr'].append(currRate)
+    st['rateSecondsQHr'].append(currRate)
+
+  st['rxBytes'] = rxBytes
+  st['txBytes'] = txBytes
+
+  st['rxBTot'] = st['rxBSessStart'] + st['rxBytes']
+  st['txBTot'] = st['txBSessStart'] + st['txBytes']
+
+  st['rxBHrs'][st['currHr']] = st['rxBHr']
+  st['txBHrs'][st['currHr']] = st['txBHr']
+
+  st['rxBQHrs'][st['currHr']][st['currQHr']] = st['rxBQHr']
+  st['txBQHrs'][st['currHr']][st['currQHr']] = st['txBQHr']
+
+  rxRateSeconds.pop(0)
+  rxRateSeconds.append(rxCurrRate)
+  txRateSeconds.pop(0)
+  txRateSeconds.append(txCurrRate)
+  timeRateSeconds.pop(0)
+  timeRateSeconds.append(uSecond)
+  #print rxRateSeconds
+  #print map(lambda x: round(x,3), timeRateSeconds)
+
+  t = datetime.now()
+  hour = t.hour
+  qHour = t.minute / 15
+  day = t.day
+  month = t.month
+  year = t.year
+
+  if (qHour != st['currQHr']) or (hour != st['currHr']) or (day != st['today']) or (month != st['currCalendarMonth']): #it's a new quarterhour (perhaps same hour but new day etc.)
+    st['rxBQHrStart'] = st['rxBTot']
+    st['txBQHrStart'] = st['txBTot']
+
+    st['rxBQHrsAcc'][st['currHr']][st['currQHr']] += st['rxBQHrs'][st['currHr']][st['currQHr']]
+    st['txBQHrsAcc'][st['currHr']][st['currQHr']] += st['txBQHrs'][st['currHr']][st['currQHr']]
+    st['bQHrsAccCtr'][st['currHr']][st['currQHr']] += 1
+
+    if (st['rxBQHrs'][st['currHr']][st['currQHr']] + st['txBQHrs'][st['currHr']][st['currQHr']]) > 500000: #lower limit for amount transferred until transfer rate is counted
+      if st['qHrAvgRateAccCtr'] > 50: #lower limit on ticks until average quarterhour rate is counted
+        st['qHrsMaxRateAcc'][st['currHr']][st['currQHr']] += st['qHrMaxRate']
+        st['qHrsMaxRateAccCtr'][st['currHr']][st['currQHr']] += 1
+
+        st['qHrsAvgRateAcc'][st['currHr']][st['currQHr']] += round(st['qHrAvgRateAcc'] / (st['qHrAvgRateAccCtr']+1e-6))
+        st['qHrsAvgRateAccCtr'][st['currHr']][st['currQHr']] += 1
+        st['qHrs95RateAcc'][st['currHr']][st['currQHr']] += sorted(st['rateSecondsQHr'])[int(len(st['rateSecondsQHr'])*0.95)]
+        st['qHrs50RateAcc'][st['currHr']][st['currQHr']] += sorted(st['rateSecondsQHr'])[int(len(st['rateSecondsQHr'])*0.5)]
+        st['qHrs95RateAccCtr'][st['currHr']][st['currQHr']] += 1
+
+        graphs['hrsMaxRate'].refresh = True
+        graphs['hrsAvgRate'].refresh = True
+
+    st['qHrMaxRate'] = 0
+    st['qHrAvgRateAcc'] = 0
+    st['qHrAvgRateAccCtr'] = 0
+
+    st['currQHr'] = qHour
+
+    st['rateSecondsQHr'] = [0]
+
+
+    if (hour != st['currHr']) or (day != st['today']) or (month != st['currCalendarMonth']): #it's a new hour (perhaps same hour but new day etc.)
+      st['rxBHrStart'] = st['rxBTot']
+      st['txBHrStart'] = st['txBTot']
+
+      st['rxBHrsAcc'][st['currHr']] += st['rxBHrs'][st['currHr']]
+      st['txBHrsAcc'][st['currHr']] += st['txBHrs'][st['currHr']]
+      st['bHrsAccCtr'][st['currHr']] += 1
+      graphs['hrsAcc'].refresh = True
+      i = st['currHr'] + 24 * (st['weekDay'] - 1)
+      st['rxBHrsWAcc'][i] += st['rxBHrs'][st['currHr']]
+      st['txBHrsWAcc'][i] += st['txBHrs'][st['currHr']]
+      st['bHrsWAccCtr'][i] += 1
+      graphs['hrsWAcc'].refresh = True
+
+      if (st['rxBHrs'][st['currHr']] + st['txBHrs'][st['currHr']]) > 500000: #lower limit for amount transferred until transfer rate is counted
+        if st['hrAvgRateAccCtr'] > 50: #lower limit on ticks until average hour rate is counted
+          st['hrsMaxRateAcc'][st['currHr']] += st['hrMaxRate']
+          st['hrsMaxRateAccCtr'][st['currHr']] += 1
+          st['hrsMaxRateWAcc'][i] += st['hrMaxRate']
+          st['hrsMaxRateWAccCtr'][i] += 1
+
+          st['hrsAvgRateAcc'][st['currHr']] += round(st['hrAvgRateAcc'] / st['hrAvgRateAccCtr'])
+          st['hrsAvgRateAccCtr'][st['currHr']] += 1
+          st['hrsAvgRateWAcc'][i] += round(st['hrAvgRateAcc'] / st['hrAvgRateAccCtr'])
+          st['hrsAvgRateWAccCtr'][i] += 1
+          st['hrs95RateAcc'][st['currHr']] += sorted(st['rateSecondsHr'])[int(len(st['rateSecondsHr'])*0.95)]
+          st['hrs50RateAcc'][st['currHr']] += sorted(st['rateSecondsHr'])[int(len(st['rateSecondsHr'])*0.5)]
+          st['hrs95RateAccCtr'][st['currHr']] += 1
+          st['hrs95RateWAcc'][i] += sorted(st['rateSecondsHr'])[int(len(st['rateSecondsHr'])*0.95)]
+          st['hrs50RateWAcc'][i] += sorted(st['rateSecondsHr'])[int(len(st['rateSecondsHr'])*0.5)]
+          st['hrs95RateWAccCtr'][i] += 1
+
+          graphs['hrsMaxRate'].refresh = True
+          graphs['hrsMaxRateW'].refresh = True
+          graphs['hrsAvgRate'].refresh = True
+          graphs['hrsAvgRateW'].refresh = True
+
+      #write hourly log file:
+      f = file(hourlyFile, 'a')
+      f.write('%s %02d:00;%d;%.3f;%.3f;%.3f;%d;%d;%d;%d\n' % ( \
+        st['dateToday'], st['currHr'], st['currHr'], \
+        st['rxBHr']/1000.0, st['txBHr']/1000.0, (st['rxBHr'] + st['txBHr'])/1000.0, st['hrMaxRate'], \
+        round(st['hrAvgRateAcc'] / (st['hrAvgRateAccCtr']+1e-6)), st['hrAvgRateAccCtr'], \
+        sorted(st['rateSecondsHr'])[int(len(st['rateSecondsHr'])*0.95)] ))
+      f.close()
+
+      st['hrMaxRate'] = 0
+      st['hrAvgRateAcc'] = 0
+      st['hrAvgRateAccCtr'] = 0
+
+      st['currHr'] = hour
+
+      st['rateSecondsHr'] = [0]
+
+
+      if (day != st['today']) or (month != st['currCalendarMonth']): #it's a new day (perhaps same day but different month)
+        st['rxBTodayStart'] = st['rxBTot']
+        st['txBTodayStart'] = st['txBTot']
+
+        #last day online is one day ago:
+        if (day == (st['today'] + 1)) or ((day == 1) and ((month == (st['currCalendarMonth'] + 1))) or (year == (st['currYear'] + 1))):
+          st['rxBYesday'] = st['rxBToday']
+          st['txBYesday'] = st['txBToday']
+          st['rxBHrsYesday'] = st['rxBHrs']
+          st['txBQHrsYesday'] = st['txBQHrs']
+          st['rxBQHrsYesday'] = st['rxBQHrs']
+          st['txBHrsYesday'] = st['txBHrs']
+        else: #last day online is more than one day ago
+          st['rxBYesday'] = 0
+          st['txBYesday'] = 0
+          st['rxBHrsYesday'] = [0] * 24
+          st['txBHrsYesday'] = [0] * 24
+          st['rxBQHrsYesday'] = map(lambda x: [x,x,x,x], st['rxBHrsYesday'])
+          st['txBQHrsYesday'] = map(lambda x: [x,x,x,x], st['txBHrsYesday'])
+
+        st['rxBHrs'] = [0] * 24
+        st['txBHrs'] = [0] * 24
+        st['rxBQHrs'] = map(lambda x: [x,x,x,x], st['rxBHrs'])
+        st['txBQHrs'] = map(lambda x: [x,x,x,x], st['txBHrs'])
+
+        if st['bMonthMin'] == 0: m = 999999999999
+        else: m = st['bMonthMin']
+        if m > (st['rxBYesday'] + st['txBYesday']):
+          st['bMonthMin'] = st['rxBYesday'] + st['txBYesday']
+          st['bMonthMinDate'] = st['dateToday']
+        if st['bMonthMax'] < (st['rxBYesday'] + st['txBYesday']):
+          st['bMonthMax'] = st['rxBYesday'] + st['txBYesday']
+          st['bMonthMaxDate'] = st['dateToday']
+
+        st['yesday'] = st['today']
+        st['today'] = day
+
+        #write daily log file:
+        f = file(dailyFile, 'a')
+        f.write('%s;%d;%.3f;%.3f;%.3f\n' % ( \
+          st['dateToday'], st['weekDay'], \
+          st['rxBYesday']/1000.0, st['txBYesday']/1000.0, (st['rxBYesday'] + st['txBYesday'])/1000.0 ))
+        f.close()
+
+        st['dateToday'] = strftime('%F')
+        st['weekDay'] = int(strftime('%u'))
+
+
+        if (month != st['currCalendarMonth']) or (year != st['currYear']): #it's a new month (as per date)
+          st['rxBDaysLastMonth'] = st['rxBDays']
+          st['txBDaysLastMonth'] = st['txBDays']
+          lastDayOfMonth = monthrange(year, month)[1] #monthrange returns (st['weekDay'] of first day of the month, number of days in month)
+          st['rxBDays'] = [0] * lastDayOfMonth
+          st['txBDays'] = [0] * lastDayOfMonth
+          st['currCalendarMonth'] = month
+
+
+        #check if we have a new month as per conf['monthStartDay']:
+        t = (year, month, day, hour, datetime.now().minute, datetime.now().second, 0, 0, 0)
+        if mktime(t) > st['nextMonthStartSec']:
+          st['rxBMonthStart'] = st['rxBTot']
+          st['txBMonthStart'] = st['txBTot']
+          st['bMonthMin'] = 0
+          st['bMonthMinDate'] = "n/a"
+          st['bMonthMax'] = 0
+          st['bMonthMaxDate'] = "n/a"
+
+          #write monthly log file:
+          f = file(monthlyFile, 'a')
+          f.write('%d;%d;%.3f;%.3f;%.3f\n' % ( \
+            year, st['currMonth'], st['rxBMonth']/1000.0, st['txBMonth']/1000.0, \
+            (st['rxBMonth'] + st['txBMonth'])/1000.0 ))
+          f.close()
+
+          st['currMonth'] = month
+          st['currYear'] = year
+          t = (st['currYear'], st['currMonth']+1, conf['monthStartDay'], 0, 0, 0, 0, 0, 0)
+          st['nextMonthStartSec'] = long(mktime(t))
+        #end if mktime(t) > st['nextMonthStartSec']
+      #end if (month != st['currCalendarMonth']) or (year != st['currYear'])
+    #end if (hour != st['currHr']) or (day != st['today']) or (month != st['currCalendarMonth'])
+  #end if (qHour != st['currQHr']) or (hour != st['currHr']) or (day != st['today']) or (month != st['currCalendarMonth'])
+
+  st['rxBQHr'] = st['rxBTot'] - st['rxBQHrStart']
+  st['txBQHr'] = st['txBTot'] - st['txBQHrStart']
+
+  st['rxBHr'] = st['rxBTot'] - st['rxBHrStart']
+  st['txBHr'] = st['txBTot'] - st['txBHrStart']
+
+  st['rxBToday'] = st['rxBTot'] - st['rxBTodayStart']
+  st['txBToday'] = st['txBTot'] - st['txBTodayStart']
+
+  st['rxBMonth'] = st['rxBTot'] - st['rxBMonthStart']
+  st['txBMonth'] = st['txBTot'] - st['txBMonthStart']
+
+  st['rxBDays'][st['today'] - 1] = st['rxBToday']
+  st['txBDays'][st['today'] - 1] = st['txBToday']
+
+  if st['today'] < conf['monthStartDay']:
+    lastDayOfMonth = 0;
+  else:
+    lastDayOfMonth = monthrange(year, month)[1]
+
+  #calculate remaining daily transfer amount with resolution of 1 hour:
+  remainingBytesDaily = (conf['limitMonth'] - (st['rxBMonth'] + st['txBMonth']) * 24) / (((conf['monthStartDay'] + lastDayOfMonth - st['today']) * 24) - st['currHr'])
+
+  statFileComplete = True
+  timer[0] = time() - uSecond
+  graphs['sec'].refresh = True
+  graphs['hrs'].refresh = True
+  graphs['days'].refresh = True
+  timer[1] = time() - uSecond
+#end DoStats
+
+
+#migrate old statfile versions to current
+def MigrateStats():
+  try:
+    f = file(statFile, 'r')
+    l = f.readline()
+    f.close()
+  except: return
+
+  com = ''
+  convert = False
+
+  f = file(statFile, 'r+')
+
+  if l[0:6] != 'global': #version 1.xx
+    PrintMessage('Found version 1.xx statfile, converting to new format.')
+    convert = True
+    c = f.read() #read entire file
+    r = r=re.compile(r'\s*#.*\n') #regex find spaces + comments...
+    c = r.sub('\n', c) #...remove spaces and comments
+    r = re.compile(r'(\d+) ') #regex find spaces after numbers...
+    c = r.sub(r'\1, ', c.replace('( ', '[').replace(' )', ']')) #...to convert bash lists into python lists
+
+    com += "st['currHr'] = currHour\nst['today'] = today\nst['yesday'] = yesterday\nst['dateToday'] = dateToday\nst['weekDay'] = weekDay\n"
+    com += "st['currMonth'] = currMonth\nst['nextMonthStartSec'] = long(mktime((datetime.now().year, st['currMonth']+1, conf['monthStartDay'], 0, 0, 0, 0, 0, 0)))\n"
+    com += "st['currCalendarMonth'] = currCalendarMonth\nst['currYear'] = int(dateToday[0:4])\n"
+    com += "st['sessStartTmSaved'] = sessionStartTimeSaved\nst['offlSince'] = offlineSince\n"
+    com += "st['rxBytes'] = rxBytesSession\nst['txBytes'] = txBytesSession\nst['rxBTot'] = rxkBytesTotal * 1000\nst['txBTot'] = txkBytesTotal * 1000\n"
+    com += "st['rxBSessStart'] = rxkBytesSessionStart * 1000\nst['txBSessStart'] = txkBytesSessionStart * 1000\nst['rxBytes'] = rxkBytesSession * 1000\nst['txBytes'] = txkBytesSession * 1000\n"
+    com += "st['rxBQHrStart'] = rxkBytesHourStart * 1000\nst['txBQHrStart'] = txkBytesHourStart * 1000\nst['rxBHrStart'] = rxkBytesHourStart * 1000\nst['txBHrStart'] = txkBytesHourStart * 1000\n"
+    com += "st['rxBTodayStart'] = rxkBytesTodayStart * 1000\nst['txBTodayStart'] = txkBytesTodayStart * 1000\nst['rxBToday'] = rxkBytesToday * 1000\nst['txBToday'] = txkBytesToday * 1000\n"
+    com += "st['rxBYesday'] = rxkBytesYesterday * 1000\nst['txBYesday'] = txkBytesYesterday * 1000\n"
+    com += "st['rxBMonthStart'] = rxkBytesMonthStart * 1000\nst['txBMonthStart'] = txkBytesMonthStart * 1000\nst['rxBMonth'] = rxkBytesMonth * 1000\nst['txBMonth'] = txkBytesMonth * 1000\n"
+    com += "st['bMonthMin'] = kBytesMonthMin * 1000\nst['bMonthMinDate'] = kBytesMonthMinDate\nst['bMonthMax'] = kBytesMonthMax * 1000\nst['bMonthMaxDate'] = kBytesMonthMaxDate\n"
+    com += "st['rxBHrs'] = map(lambda x: int(x*1000), rxkBytesHours)\nst['txBHrs'] = map(lambda x: int(x*1000), txkBytesHours)\nst['rxBHrsYesday'] = map(lambda x: int(x*1000), rxkBytesHoursYesterday)\nst['txBHrsYesday'] = map(lambda x: int(x*1000), txkBytesHoursYesterday)\n"
+    com += "st['rxBQHrs'] = map(lambda x: [x/4,x/4,x/4,x/4], st['rxBHrs'])\nst['txBQHrs'] = map(lambda x: [x/4,x/4,x/4,x/4], st['txBHrs'])\nst['rxBQHrsYesday'] = map(lambda x: [x/4,x/4,x/4,x/4], st['rxBHrsYesday'])\nst['txBQHrsYesday'] = map(lambda x: [x/4,x/4,x/4,x/4], st['txBHrsYesday'])\n"
+    com += "st['rxBDays'] = map(lambda x: long(x*1000), rxkBytesDays)\nst['txBDays'] = map(lambda x: long(x*1000), txkBytesDays)\nst['rxBDaysLastMonth'] = map(lambda x: long(x*1000), rxkBytesDaysLastmonth)\nst['txBDaysLastMonth'] = map(lambda x: long(x*1000), txkBytesDaysLastmonth)\n"
+    com += "st['rxBHrsAcc'] = map(lambda x: long(x*1000), rxkBytesHoursAcc)\nst['txBHrsAcc'] = map(lambda x: long(x*1000), txkBytesHoursAcc)\nst['bHrsAccCtr'] = kBytesHoursAccCtr\n"
+    com += "st['rxBQHrsAcc'] = map(lambda x: [x/4,x/4,x/4,x/4], st['rxBHrsAcc'])\nst['txBQHrsAcc'] = map(lambda x: [x/4,x/4,x/4,x/4], st['txBHrsAcc'])\nst['bQHrsAccCtr'] = map(lambda x: [x,x,x,x], st['bHrsAccCtr'])\n"
+    com += "try: st['rxBHrsWAcc'] = map(lambda x,y: x-y, kBytesHoursWAcc, txkBytesHoursWAcc)\nexcept: pass\ntry: st['txBHrsWAcc'] = txkBytesHoursWAcc\nexcept: pass\ntry: st['bHrsWAccCtr'] = kBytesHoursWAccCtr\nexcept: pass\n"
+    com += "st['hrsMaxRateAcc'] = map(lambda x: x*1000, hoursMaxRateAcc)\nst['hrsMaxRateAccCtr'] = hoursMaxRateAccCtr\nst['qHrsMaxRateAcc'] = map(lambda x: [x,x,x,x], st['hrsMaxRateAcc'])\nst['qHrsMaxRateAccCtr'] = map(lambda x: [x,x,x,x], st['hrsMaxRateAccCtr'])\n"
+    com += "try: st['hrsMaxRateWAcc'] = map(lambda x: x*1000, hoursMaxRateWAcc)\nexcept: pass\ntry: st['hrsMaxRateWAccCtr'] = hoursMaxRateWAccCtr\nexcept: pass\n"
+    com += "st['hrsAvgRateAcc'] = map(lambda x: x*1000, hoursAvgRateAcc)\nst['hrsAvgRateAccCtr'] = hoursAvgRateAccCtr\nst['qHrsAvgRateAcc'] = map(lambda x: [x,x,x,x], st['hrsAvgRateAcc'])\nst['qHrsAvgRateAccCtr'] = map(lambda x: [x,x,x,x], st['hrsAvgRateAccCtr'])\n"
+    com += "try: st['hrsAvgRateWAcc'] = map(lambda x: x*1000, hoursAvgRateWAcc)\nexcept: pass\ntry: st['hrsAvgRateWAccCtr'] = hoursAvgRateWAccCtr\nexcept: pass\n"
+    com += "st['rateSecondsHr'] = [0]\nst['rateSecondsQHr'] = [0]\n"
+    com += "st['hrs95RateAcc'] = [0] * 24\nst['hrs50RateAcc'] = [0] * 24\nst['hrs95RateAccCtr'] = [0] * 24\n"
+    com += "st['qHrs95RateAcc'] = map(lambda x: [x,x,x,x], st['hrs95RateAcc'])\nst['qHrs50RateAcc'] = map(lambda x: [x,x,x,x], st['hrs50RateAcc'])\nst['qHrs95RateAccCtr'] = map(lambda x: [x,x,x,x], st['hrs95RateAccCtr'])\n"
+    com += "st['hrs95RateWAcc'] = [0] * 24 * 7\nst['hrs50RateWAcc'] = [0] * 24 * 7\nst['hrs95RateWAccCtr'] = [0] * 24 * 7\n"
+    com += "st['ifaceName'] = ''\n"
+
+  else: #python version
+    ReadStatFile()
+    if float(statProgVersion) == 2.01:
+      PrintMessage('Found version ' + statProgVersion + ' statfile, adding data.')
+      convert = True
+      c = f.read() #read entire file
+      com += "st['ip'] = ''\n"
+      com += "st['dDNSLocked'] = False\n"
+      com += "st['dDNSLockedUntil'] = 0\n"
+      com += "st['dDNSConfHash'] = ''\n"
+      com += "st['dDNSNextTest'] = 0\n"
+
+
+  if convert:
+    f.seek(0)
+    f.write('global ' + statFileGlobals + '\n') #write globals at beginning
+    f.write(c + '\n') #append old file contents
+    f.write(com) #append conversion code
+    f.close()
+
+    #reading actually runs the file as python code and does the conversion of vars (this is the easy way
+    #of doing it so we don't need to define all those global vars for every old version there might be)
+    ReadStatFile()
+    WriteStatFile() #write new format
+  #end if convert
+#end MigrateStats
+
+
+def SecureStatFiles():
+  global nextStatCopySecond
+  if conf['tempPath'] != conf['statFilePath']:
+    copy(statFile, conf['statFilePath']) #secure updated statfile
+    copy(statFile, conf['statFilePath'] + statFileName + '~') #secure updated statfile
+  nextStatCopySecond = long(time() + conf['statSecureInt'])
+#end SecureStatFiles
+
+
+def ReadStatFile():
+  global statFileComplete
+
+  if not conf['writeStats']:
+    return
+
+  statFileComplete = False
+
+  if not os.path.isfile(statFile): #statfile does not exist
+    PrintMessage('Main stats file not found.', 0)
+  else:
+    execfile(statFile)
+
+  if (not statFileComplete): #if there was an error finishing writing of the stat file...
+    PrintMessage('Main stats file is incomplete. This happens in rare cases when UMTSkeeper is killed in the wrong moment. Trying to load backup file. This can cause slight inacurracies in the statistics.', 0)
+    if not os.path.isfile(statFile + '~'): #backup statfile does not exist
+      PrintMessage('Main stats file backup not found. Possibly this program is being run for the very first time.', 0)
+    else:
+      execfile(statFile + '~')
+#end ReadStatFile
+
+
+#write text stat file
+def WriteStatFile(writeToLog = False):
+  if not conf['writeStats']:
+    return
+
+  s = ''
+  if writeToLog:
+    s += '\n## stat file backup ###################################################\n'
+
+  s += 'global ' + statFileGlobals
+
+  if not writeToLog:
+    s += '\n#######################################################################'
+    s += '\n# last update:\t\t%s' % (strftime('%F %T'))
+    s += '\n# connected since:\t' + connectionMsg
+    s += '\n# current rate:\t\t%u Bytes/s' % currRate
+    s += '\n# transfer today:\t%.3f MBytes (%.3f down, %.3f up)' % (((st['rxBToday'] + st['txBToday']) / 1000000.0), (st['rxBToday'] / 1000000.0), (st['txBToday'] / 1000000.0))
+    s += '\n# transfer yesterday:\t%.3f MBytes (%.3f down, %.3f up)' % (((st['rxBYesday'] + st['txBYesday']) / 1000000.0), (st['rxBYesday'] / 1000000.0), (st['txBYesday'] / 1000000.0))
+    s += '\n# transfer month:\t%.3f MBytes (%.3f down, %.3f up)' % (((st['rxBMonth'] + st['txBMonth']) / 1000000.0), (st['rxBMonth'] / 1000000.0), (st['txBMonth'] / 1000000.0))
+    if conf['limitMonth'] > 0:
+      s += '\n# remaining transfer:\t%.1f MBytes (est. %.1f MBytes/day)' % (((conf['limitMonth'] - st['rxBMonth'] - st['txBMonth']) / 1000000.0), (remainingBytesDaily / 1000000.0))
+    else:
+      s += '\n# remaining transfer:\tunlimited'
+    s += '\n#'
+    s += '\n# transfer total:\t%.6f GBytes (%.6f down, %.6f up)' % (((st['rxBTot'] + st['txBTot']) / 1000000000.0), (st['rxBTot'] / 1000000000.0), (st['txBTot'] / 1000000000.0))
+
+    s += '\n#######################################################################'
+    s += '\n'
+
+  s += '\nstatProgVersion = "' + version + '"'
+  s += '\nstatProgSubVersion = "' + subVersion + '"'
+  if writeToLog:
+    s += '\nst = ' + str(st)
+  else:
+    s += '\nst = {' + reduce(lambda s1,s2: s1+", \\\n'"+s2, sorted(str(st)[1:-1].split(", '"))) + '}' #this sorts the dictionary (for debug, it's a cpu eater)
+    #s += '\nst = ' + str(st).replace(", '", ", \\\n'")
+  s += '\nstatFileComplete = ' + str(statFileComplete)
+
+  if writeToLog:
+    s += '\n## end stat file backup ###############################################\n'
+
+  s += '\n'
+
+  if writeToLog and conf['logMsg']:
+    f = file(conf['logFile'], 'a')
+    f.write(s)
+    f.close()
+  else:
+    f = file(statFile, 'w')
+    f.write(s)
+    f.close()
+#end WriteStatFile
+
+
+def CopyToHTMLPath(fil):
+  if conf['htmlPath'] != '':
+    copy(fil, conf['htmlPath'])
+#end CopyToHTMLPath
+
+
+def WriteStatFileHTML(doHTML=conf['writeHTMLStats']):
+  if (not doHTML) or (not conf['writeStats']):
+    return
+
+#  timer1 = time() #killme - devel
+
+  s = ''
+
+  s += '<html><head>\n'
+  s += '<title>%.2f kB/s - %s</title>\n' % ((currRate / 1000.0), progName)
+  if conf['runHTMLReloadInterval']: s += '<meta http-equiv="refresh" content="%d URL=/">\n' % conf['runHTMLReloadInterval']
+  s += '<link rel="stylesheet" type="text/css" href="style.css">\n'
+  s += '<link id="favicon" rel="shortcut icon" type="image/ico" href="favicon.ico">\n'
+  s += '</head><body class="sans" onload="document.getElementById(\'logframe\').scrollTop=5000;">\n'
+#  s += 'timers: ' + reduce(lambda x1,x2: str(x1)+' '+str(x2), map(lambda x: round(x,5), timer)) + '<br>\n' #killme: debug
+
+  #menu
+  sep = '&nbsp&middot&nbsp;'
+  s += '<div class="menu-frame">\n'
+  s += 'refresh: <a href="?refresh=0">&nbsp;stop&nbsp;</a>&nbsp;<a href="?refresh=30">&nbsp;slow&nbsp;</a>&nbsp<a href="?refresh=%d">&nbsp;normal&nbsp;</a>' % conf['htmlReloadInterval']
+  s += sep
+  s += 'graphs: <a href="?showgraphs=0">&nbsp;none&nbsp;</a>&nbsp;<a href="?showgraphs=1">&nbsp;minimal&nbsp;</a>&nbsp;<a href="?showgraphs=3">&nbsp;all&nbsp;</a>'
+  s += sep
+  if conf['runHTMLShowLog']:
+    s += '<a href="?showlog=0">&nbsp;hide&nbsp;log&nbsp;</a>'
+  else:
+    s += '<a href="?showlog=1">&nbsp;show&nbsp;log&nbsp;</a>'
+  s += sep
+  s += '<a href="?reconnect">&nbsp;connect&nbsp;</a>'
+  if dnsUpdater.enabled:
+    s += sep
+    s += '<a href="?updatedns">&nbsp;update&nbsp;DNS&nbsp;</a>'
+  s += '</div>\n'
+
+  #captions:
+  s += '<div class="left alignright" style="width:15em">\n'
+  s += 'UMTSkeeper statistics from:<br>\n'
+  s += 'connected since:<br>\n'
+  s += '<br>\n'
+  s += 'current transfer rate:<br>\n'
+  s += '<br>\n'
+  s += 'transfer today:<br>\n'
+  s += 'transfer yesterday:<br>\n'
+  s += 'daily minimum:<br>\n'
+  s += 'daily maximum:<br>\n'
+  s += 'transfer month:<br>\n'
+  s += 'remaining transfer:<br>\n'
+  s += '</div>\n'
+
+  #values:
+  s += '<div class="left" style="width:25em">\n'
+  s += '<span class="val">' + strftime('%F %T') + '</span><br>\n'
+  s += '%s<br>\n' % connectionMsg
+  s += '<br>\n'
+  s += '<span class="val">%.2f kBytes/s</span> (%.3f &darr;, %.3f &uarr;)<br>\n' % ((currRate / 1000.0), (rxCurrRate / 1000.0), (txCurrRate / 1000.0))
+  s += '<br>\n'
+  s += '<span class="val">%.3f MBytes</span> (%.3f &darr;, %.3f &uarr;)<br>\n' % (((st['rxBToday'] + st['txBToday']) / 1000000.0), (st['rxBToday'] / 1000000.0), (st['txBToday'] / 1000000.0))
+  s += '%.3f MBytes (%.3f &darr;, %.3f &uarr;)<br>\n' % (((st['rxBYesday'] + st['txBYesday']) / 1000000.0), (st['rxBYesday'] / 1000000.0), (st['txBYesday'] / 1000000.0))
+  s += '%.3f MBytes on %s<br>\n' % ((st['bMonthMin'] / 1000000.0), st['bMonthMinDate'])
+  s += '%.3f MBytes on %s<br>\n' % ((st['bMonthMax'] / 1000000.0), st['bMonthMaxDate'])
+  s += '%.3f MBytes (%.3f &darr;, %.3f &uarr;)<br>\n' % (((st['rxBMonth'] + st['txBMonth']) / 1000000.0), (st['rxBMonth'] / 1000000.0), (st['txBMonth'] / 1000000.0))
+  if conf['limitMonth'] > 0:
+    s += '<span class="val">%.1f MBytes</span> (est. <span class="val">%.1f MBytes/day</span>)<br>\n' % (((conf['limitMonth'] - st['rxBMonth'] - st['txBMonth']) / 1000000.0), (remainingBytesDaily / 1000000.0))
+  else:
+    s += '<span class="val">unlimited</span><br>\n'
+  s += '</div>\n'
+
+  s += '<div class="left">\n'
+
+  #log frame
+  if conf['runHTMLShowLog']:
+    s += '<div id="logframe" class="log-frame">'
+    s += reduce(lambda x,y: x+y, intLog)
+    s += '<a name="logbottom"></a>'
+    s += '</div>\n'
+
+  s += '</div>\n'
+
+  s += '<div style="clear:both"></div>\n'
+
+  s += '\n'
+
+  #graphs:
+  if conf['runHTMLShowGraphs']:
+    if conf['runHTMLShowGraphs'] == 1:
+      gList = [['sec', '']]
+      RefreshGraphs(['sec'])
+    else:
+      gList = [ \
+        ['sec', ''], \
+        ['hrs', '48 Hours Transfer<br>\n'], \
+        ['hrsAcc', 'Average Transfer<br>\n'], \
+        ['hrsWAcc', 'Average Transfer - Week<br>\n'], \
+        ['hrsAvgRate', 'Average Rate<br>\n'], \
+        ['hrsMaxRate', 'Average Maximum Rate<br>\n'], \
+        ['hrsAvgRateW', 'Average Rate - Week<br>\n'], \
+        ['hrsMaxRateW', 'Average Maximum Rate - Week<br>\n'], \
+        ['days', '2 Months Transfer<br>\n']\
+      ]
+      RefreshGraphs()
+
+    for g in gList:
+      s += '<div class="graph-frame" style="width:%d">\n' % (graphs[g[0]].width+1)
+      s += g[1]
+      s += '<div style="width:%dpx;height:%dpx">\n' % (graphs[g[0]].width+1, graphs[g[0]].height+1)
+      s += graphs[g[0]].svg + '\n'
+      s += '</div></div>\n'
+
+
+  s += '<br>UMTSkeeper ver. %s %s\n' % (version, subVersion)
+  s += '</body></html>\n'
+#  timer[2] = time() - timer1 #killme - devel
+
+  if conf['writeHTMLStats']:
+    f = file(statFileHTML, 'w')
+    f.write(s)
+    f.close()
+    CopyToHTMLPath(statFileHTML)
+  else:
+    return s
+#end WriteStatFileHTML
+
+
+#print the help text
+def PrintHelp():
+  None
+#end PrintHelp
+
+
+def ConfNoRoot():
+  global conf
+  conf['logFile'] = progPath + progName + '.log'
+  conf['statFilePath'] = progPath
+  conf['tempPath'] = progPath
+#end ConfNoRoot
+
+
+#Process the command line arguments
+def ParseRunArguments():
+  global conf, st
+  global confFile, statFile, statFileHTML, monthlyFile, dailyFile, hourlyFile
+
+  args = list(sys.argv)
+  args.pop(0) #first argument is the program name
+
+  while len(args) > 0:
+    arg = args.pop(0)
+    if arg == '--conf':
+      s = args.pop(0)
+      if os.path.isfile(s):
+        confFile = s
+      elif os.path.isfile(progPath + s):
+        confFile = progPath + s
+      elif os.path.isfile('/etc/umtskeeper/' + s):
+        confFile = '/etc/umtskeeper/' + s
+      else:
+        PrintMessage('Couldn\'t find config file "' + s + '". Exiting.', False)
+        sys.exit(1)
+    elif arg == '--devicename':
+      conf['deviceName'] = args.pop(0)
+    elif arg == '--iface':
+      conf['ifaceName'] = args.pop(0)
+    elif arg == '--nat':
+      arg = args.pop(0)
+      if arg == 'no':
+        conf['ifaceNAT'] = ''
+      else:
+        conf['ifaceNAT'] = arg
+    elif (arg == '--testcycle') or (arg == '--interval'):
+      conf['testCycle'] = int(args.pop(0))
+    elif arg == '--limitmonth':
+      conf['limitMonth'] = int(args.pop(0))
+    elif arg == '--limitday':
+      conf['doLimitDay'] = int(args.pop(0))
+    elif arg == '--log':
+      conf['logMsg'] = True
+    elif arg == '--logfile':
+      conf['logFile'] = args.pop(0)
+      conf['logMsg'] = True
+    elif arg == '--logonly':
+      conf['logOnly'] = True
+    elif arg == '--monthstart':
+      conf['monthStartDay'] = int(args.pop(0))
+    elif arg == '--nostats':
+      conf['writeStats'] = False
+    elif arg == '--htmlstats':
+      conf['writeHTMLStats'] = True
+    elif arg == '--httpserver':
+      conf['httpServer'] = True
+      conf['writeHTMLStats'] = False
+    elif arg == '--httpport':
+      conf['httpPort'] = int(args.pop(0))
+      conf['httpServer'] = True
+    elif arg == '--silent': #no shell output
+      conf['printMsg'] = False
+    elif arg in ('help', '--help', '-?'):
+      PrintHelp()
+    elif arg == 'resetmonth': #reset monthly transfer counter
+      ReadStatFile()
+      st['rxBMonth'] = 0
+      st['txBMonth'] = 0
+      st['rxBMonthStart'] = st['rxBTot']
+      st['txBMonthStart'] = st['txBTot']
+      if statFileComplete: #write stat file only if stats have been successfully written
+        WriteStatFile()
+        SecureStatFiles()
+        PrintMessage('Monthly transfer counter reset.')
+      else:
+        PrintMessage('Error while resetting Monthly transfer counter. Main stats file is not complete.')
+      sys.exit()
+    elif arg == 'resettransferstats': #reset transfer counters
+      ReadStatFile()
+      st['rxBHrs'] = [0] * 24
+      st['txBHrs'] = [0] * 24
+      st['rxBHrsYesday'] = [0] * 24
+      st['txBHrsYesday'] = [0] * 24
+      st['rxBQHrs'] = map(lambda x: [x,x,x,x], st['rxBHrs'])
+      st['txBQHrs'] = map(lambda x: [x,x,x,x], st['txBHrs'])
+      st['rxBQHrsYesday'] = map(lambda x: [x,x,x,x], st['rxBHrsYesday'])
+      st['txBQHrsYesday'] = map(lambda x: [x,x,x,x], st['txBHrsYesday'])
+      st['rxBDays'] = [0] * 31
+      st['txBDays'] = [0] * 31
+      st['rxBDaysLastMonth'] = [0] * 31
+      st['txBDaysLastMonth'] = [0] * 31
+      st['rxBHrsAcc'] = [0] * 24
+      st['txBHrsAcc'] = [0] * 24
+      st['bHrsAccCtr'] = [0] * 24
+      st['rxBQHrsAcc'] = map(lambda x: [x,x,x,x], st['rxBHrsAcc'])
+      st['txBQHrsAcc'] = map(lambda x: [x,x,x,x], st['txBHrsAcc'])
+      st['bQHrsAccCtr'] = map(lambda x: [x,x,x,x], st['bHrsAccCtr'])
+      st['rxBHrsWAcc'] = [0] * 24 * 7
+      st['txBHrsWAcc'] = [0] * 24 * 7
+      st['bHrsWAccCtr'] = [0] * 24 * 7
+      if statFileComplete: #write stat file only if stats have been successfully written
+        WriteStatFile()
+        SecureStatFiles()
+        PrintMessage('Transfer statistics reset.')
+      else:
+        PrintMessage('Error while resetting transfer statistics. Main stats file is not complete.')
+      sys.exit()
+    elif arg == 'resetratestats': #reset transfer rate counters
+      ReadStatFile()
+      st['hrsMaxRateAcc'] = [0] * 24
+      st['hrsMaxRateAccCtr'] = [0] * 24
+      st['hrs95RateAcc'] = [0] * 24
+      st['hrs50RateAcc'] = [0] * 24
+      st['hrs95RateAccCtr'] = [0] * 24
+      st['qHrsMaxRateAcc'] = map(lambda x: [x,x,x,x], st['hrsMaxRateAcc'])
+      st['qHrsMaxRateAccCtr'] = map(lambda x: [x,x,x,x], st['hrsMaxRateAccCtr'])
+      st['qHrs95RateAcc'] = map(lambda x: [x,x,x,x], st['hrs95RateAcc'])
+      st['qHrs50RateAcc'] = map(lambda x: [x,x,x,x], st['hrs50RateAcc'])
+      st['qHrs95RateAccCtr'] = map(lambda x: [x,x,x,x], st['hrs95RateAccCtr'])
+      st['hrsMaxRateWAcc'] = [0] * 24 * 7
+      st['hrsMaxRateWAccCtr'] = [0] * 24 * 7
+      st['hrs95RateWAcc'] = [0] * 24 * 7
+      st['hrs50RateWAcc'] = [0] * 24 * 7
+      st['hrs95RateWAccCtr'] = [0] * 24 * 7
+      st['hrsAvgRateAcc'] = [0] * 24
+      st['hrsAvgRateAccCtr'] = [0] * 24
+      st['qHrsAvgRateAcc'] = map(lambda x: [x,x,x,x], st['hrsAvgRateAcc'])
+      st['qHrsAvgRateAccCtr'] = map(lambda x: [x,x,x,x], st['hrsAvgRateAccCtr'])
+      st['hrsAvgRateWAcc'] = [0] * 24 * 7
+      st['hrsAvgRateWAccCtr'] = [0] * 24 * 7
+      if statFileComplete: #write stat file only if stats have been successfully written
+        WriteStatFile()
+        SecureStatFiles()
+        PrintMessage('Transfer rate statistics reset.')
+      else:
+        PrintMessage('Error while resetting transfer rate statistics. Main stats file is not complete.')
+      sys.exit()
+    elif (arg == '--statfilepath') or (arg == '--statpath'):
+      s = args.pop(0)
+      if os.path.isdir(s):
+        conf['statFilePath'] = s
+      else:
+        PrintMessage('Path "' + s + '" does not exist. Falling back to default statpath="' + conf['statFilePath'] + '".', False)
+    elif arg == '--temppath':
+      s = args.pop(0)
+      if os.path.isdir(s):
+        conf['tempPath'] = s
+        statFile = conf['tempPath'] + statFileName
+        statFileHTML = conf['tempPath'] + statFileHTMLName
+      else:
+        PrintMessage('Path "' + s + '" does not exist. The default temppath is "' + conf['tempPath'] + '". Anyway, exiting now.', False)
+        sys.exit(1)
+    elif arg == '--htmlpath':
+      s = args.pop(0)
+      if os.path.isdir(s):
+        conf['htmlPath'] = s
+        monthlyFile = conf['statFilePath'] + monthlyFileName
+        dailyFile = conf['statFilePath'] + dailyFileName
+        hourlyFile = conf['statFilePath'] + hourlyFileName
+      else:
+        PrintMessage('Path "' + s + '" does not exist. Falling back to default htmlpath=<none>.', False)
+    elif arg == '--sakisswitches':
+      conf['sakisSwitches'] = args.pop(0)
+    elif arg == '--sakisoperators':
+      conf['sakisOperators'] = args.pop(0)
+    elif arg == '--sakismaxfails':
+      conf['sakisMaxFails'] = int(args.pop(0))
+    elif arg == '--sakisfaillockduration':
+      conf['sakisFailLockDuration'] = int(args.pop(0))
+    elif arg == '--noroot':
+      ConfNoRoot()
+    elif (arg == 'stop') or (arg == 'quit') or (arg == 'end'): #terminate program
+      TerminateOldInstance()
+      sys.exit()
+    elif arg == 'connect': #retry connect
+      ConnectOldInstance()
+      sys.exit()
+    elif arg == '--ipwebsite':
+      conf['ipWebsite'] = args.pop(0)
+    elif arg == '--devel':
+      pass
+    else:
+      print('unknown option: ' + arg)
+      sys.exit(1)
+  #end while len(args) > 0
+#end ParseRunArguments
+
+
+def DoNAT(iface):
+  PrintMessage('forwarding on interface "' + iface + '"', 0)
+
+  natActive = subprocess.Popen('iptables-save | grep --max-count=1 "' + conf['ifaceNAT'] + ' .* MASQUERADE"', shell=True, stdout=subprocess.PIPE).communicate()[0]
+  if natActive == '':
+    SubprocessCallWithLog('iptables -t nat -A POSTROUTING -o ' + conf['ifaceNAT'] + ' -j MASQUERADE')
+    SubprocessCallWithLog('sysctl -w net.ipv4.conf.all.forwarding=1')
+
+    natActive = subprocess.Popen('iptables-save | grep --max-count=1 "' + conf['ifaceNAT'] + ' .* MASQUERADE"', shell=True, stdout=subprocess.PIPE).communicate()[0][0:-1]
+    PrintMessage('Internet forwarding for ' + conf['ifaceNAT'] + ' activated: ' + natActive)
+  else:
+    PrintMessage('Internet forwarding for ' + conf['ifaceNAT'] + ' already active: ' + natActive)
+#end DoNAT
+
+
+def RaiseOfflineFlag(msg = ''):
+  global st, inetIsDown, connectionMsg
+
+  inetIsDown = True
+
+  if st['offlSince'] == '':
+    st['offlSince'] = GetTime()
+
+  if msg == '': connectionMsg = '-- (offline since ' + st['offlSince'] + ', connecting)'
+  else: connectionMsg = msg
+
+  if statFileComplete: #write stat file only if stats have been done
+    WriteStatFile()
+    WriteStatFileHTML()
+#end RaiseOfflineFlag
+
+
+def RaiseOnlineFlag():
+  global st, inetIsDown, disconnectNecessary, wrongPinCount, dnsUpdater
+
+  inetIsDown = False
+  disconnectNecessary = False
+  wrongPinCount = 0
+  st['offlSince'] = ''
+
+  if conf['logOnly']: st['dDNSNextTest'] = time() + 5
+  else:
+    dnsUpdater.Update()
+
+  conf['runDDNSRetry'] = 3
+#end RaiseOnlineFlag
+
+
+def SessionStart():
+  global sessionStartTime, connectionMsg, newSession
+
+  sessionStartTime = GetTime()
+  connectionMsg = str(sessionStartTime)
+  newSession = True
+#end SessionStart
+
+
+def Main():
+  global st, inetIsDown, netOperstate, connectionMsg, limitDay, limitExceeded, wrongPinCount, sakisFailCtr, sakisLockedUntil
+
+  PrintMessage('Internet status:', False)
+  SakisStatus()
+
+  cycleCtr = conf['testCycle'] + 1
+  sakisFailCtr = 0
+  sakisLockedUntil = 0
+
+  while True:
+    cycleCtr += 1
+
+    if not conf['logOnly']: #not conf['logOnly'] means that we want to do all the sakis3g connect stuff
+
+      if sakisLockedUntil and (time() > sakisLockedUntil):
+        sakisLockedUntil = 0
+        sakisFailCtr = 0
+
+      if (not sakisLockedUntil) and ((cycleCtr > conf['testCycle']) or (inetIsDown)):
+        #do the sakis connect stuff
+        cycleCtr = 0
+
+        if not inetIsDown:
+          inetIsDown = subprocess.call(sakisProg + ' silent status', shell=True) #returns 0 if connected
+
+        if (inetIsDown) and (not limitExceeded): #we are offline
+          RaiseOfflineFlag()
+
+          PrintMessage('Internet connection is DOWN. Calling Sakis3G connect...')
+
+          if not disconnectNecessary:
+            sakisActors = 'connect' # wait wait wait wait not connected connect"
+          else:
+            sakisActors = 'ignore disconnect connect'
+
+          sakisSw = conf['sakisSwitches']
+          sakisOp = conf['sakisOperators']
+
+          #commands to disconnect/reconnect (try twice)
+          PrintMessage('Sakis3G cmdLine: ' + sakisProg + ' ' + sakisActors + ' ' + sakisSw + ' ' + sakisOp, False)
+
+          #do the connect
+    #      sakisUnlock = sakisProg + ' prepare ' + sakisSw + ' ' + sakisOp
+    #      sakisSwitchonly = sakisProg + ' switchonly ' + sakisSw + ' ' + sakisOp
+          PrintMessage('Sakis3G says...', False)
+          errorCode = SubprocessCallWithLog(sakisProg + ' ' + sakisActors + ' ' + sakisSw + ' ' + sakisOp)
+
+          if errorCode > 0:
+            errorMsg = GetSakisErrorMsg(errorCode)
+            PrintMessage(errorMsg)
+            sakisActors = 'ignore disconnect connect'
+            PrintMessage('Still not online. Trying disconnect-reconnect...')
+            PrintMessage('Sakis3G cmdLine: ' + sakisProg + ' ' + sakisActors + ' ' + sakisSw + ' ' + sakisOp, False)
+            PrintMessage('Sakis3G says...', False)
+            errorCode = SubprocessCallWithLog(sakisProg + ' ' + sakisActors + ' ' + sakisSw + ' ' + sakisOp)
+
+          #if we have a "wrong pin" error (possibly after hardware replug), make a safety break until we try again.
+          if errorCode == 12:
+            wrongPinCount += 1
+            if wrongPinCount ==  1:
+              PrintMessage("Wrong PIN (first time)! DON'T PANIC! This may happen because of a freshly plugged modem. Let's have a safety break for %ds until the next try..." % conf['wrongPinDelay'])
+            elif wrongPinCount ==  2:
+              PrintMessage("Wrong PIN (second time)! Aborting. Please connect through a GUI or with 'sakis3g --interactive' to be safe.")
+              sys.exit(3)
+            time.sleep(conf['wrongPinDelay'])
+
+          #if we have a "Modem unable to register a network" error, try re-registering to a network.
+          if errorCode == 13:
+            sakisActors = 'ignore disconnect connect'
+            cmdLine = sakisProg + ' ' + sakisActors + ' ' + sakisSw + ' --scanyes ' + sakisOp
+            PrintMessage('Still not online. Trying re-registering...')
+            PrintMessage('Sakis3G cmdLine: ' + cmdLine, False)
+            PrintMessage('Sakis3G says...', False)
+            errorCode = SubprocessCallWithLog(cmdLine)
+
+          #test if we are online now:
+          PrintMessage('Testing connection...')
+          inetIsDown = subprocess.call(sakisProg + ' silent status', shell=True) #returns 0 if connected
+
+          if not inetIsDown: #connection successful
+            PrintMessage('Success... we are online!')
+            SessionStart()
+            RaiseOnlineFlag()
+            sakisFailCtr = 0
+          else: #connection could not be established
+            cycleCtr = conf['testCycle'] + 1
+            sakisFailCtr += 1
+            if conf['sakisMaxFails'] and (sakisFailCtr >= conf['sakisMaxFails']):
+              sakisLockedUntil = time() + conf['sakisFailLockDuration']
+              PrintMessage('Unable to connect, tried %d times now. Next connection retry in %d seconds. Turn this behaviour off by setting the config variable conf[\'sakisMaxFails\']=0.' % (conf['sakisMaxFails'], conf['sakisFailLockDuration']))
+              connectionMsg = 'Too many connection retries failed.<br>Next try: %s.' % strftime('%F %T', localtime(sakisLockedUntil))
+            else:
+              PrintMessage('Unable to establish Internet connection. Will keep trying...')
+
+            PrintMessage('Sakis3G info:', False)
+            SakisStatus()
+
+            if modemPlugged: #modem is present, though
+              output = subprocess.Popen('lsusb | grep ' + conf['deviceName'], shell=True, stdout=subprocess.PIPE).communicate()[0]
+              if output != '':
+                busNr = output[4:7]
+                devNr = output[15:18]
+                PrintMessage('Trying to reset USB device %s (Bus %s, Device %s)...' % (conf['deviceName'], busNr, devNr))
+                errorCode = subprocess.call(usbResetProg + ' /dev/bus/usb/' + busNr + '/' + devNr, shell=True)
+                PrintMessage('Will retry to connect in %d seconds.' % (conf['testCycle'] * conf['statCycle']))
+              else:
+                PrintMessage('Device %s not found for reset (perhaps modeswitch is not yet done).' % conf['deviceName'])
+            #end if modemPlugged
+          #end if inetIsDown
+        #end if (inetIsDown) and (not limitExceeded)
+      #end if (not sakisLockedUntil) and ((cycleCtr > conf['testCycle']) or (inetIsDown))
+
+
+    #end if not conf['logOnly']
+
+
+    ################################################################################
+    # conf['logOnly']==True which means that we don't use sakis3g but rely on system
+    # methods to determine if we are connected:
+    ################################################################################
+
+    #sys/* file behavior with different network devices (fnf = file not found, # = arbitrary number)
+    #file /sys/class/net/<iface>/...
+    #
+    ##### deactivated / unplugged:
+    #         <iface> --> | eth0 | wlan0 | ppp0 (3G USB)
+    # file ---------------------------------------------
+    # operstate           | down | down  | fnf
+    # link_mode           | 0    | 0     | fnf
+    # statistics/rx_bytes | # (3)| #  (3)| fnf
+    #
+    ##### active unconnected / plugged:
+    #         <iface> --> | eth0 (1)| wlan0 (2)| ppp0 (3G USB)
+    # file ---------------------------------------------
+    # operstate           | down    | down     | fnf
+    # link_mode           | 0       | 1        | fnf
+    # statistics/rx_bytes | #    (3)| #     (3)| fnf
+    #
+    ##### connected:
+    #         <iface> --> | eth0 | wlan0 | ppp0 (3G USB)
+    # file ---------------------------------------------
+    # operstate           | up   | up    | unknown
+    # link_mode           | 0    | 1     | 0
+    # statistics/rx_bytes | #    | #     | #
+    #
+    # (1) no difference between 'ifconfig eth0 down' and unplugging it
+    # (2) no difference between 'ifconfig wlan0 down' and disconnecting from router
+    # (3) counters are not reset during disconnect or deactivation
+
+    if (not inetIsDown) or conf['logOnly']:
+      netOperstate = 'device not found or not connected to network'
+      #this file contains up/down info only with 'static' (non-detachable) networks (else 'unknown'); try if we have one:
+      try:
+        f = file('/sys/class/net/' + conf['ifaceName'] +  '/operstate', 'r')
+        netOperstate = f.readline()[0:-1] #read ifaceName up/down status
+        f.close()
+      except IOError: #operstate file does not exist -> detachable (ppp?) device, not plugged or deactivated
+        pass
+
+      if (netOperstate != 'up') and (netOperstate != 'unknown'): #'down' or not detected
+        if not inetIsDown:
+          RaiseOfflineFlag('--- (device not found or not connected to network)')
+          PrintMessage('Offline: Network device ' + conf['ifaceName'] + ' not found or not connected.', 1)
+      #end if (netOperstate != 'up') and (netOperstate != 'unknown')
+
+      if not limitExceeded:
+        if (netOperstate == 'up'):
+          #this is for the --logonly option, we see that we are reconnected
+          if conf['logOnly'] and inetIsDown:
+            PrintMessage('Online: Network device ' + conf['ifaceName'] + ' is active and connected.', 1)
+            RaiseOnlineFlag()
+            sessionStartTime = GetTime()
+            connectionMsg = str(sessionStartTime)
+            #here we have no new session (newSession=1). LAN and WLAN devices don't vanish when deactivated
+            #(unlike PPP connections), therefore the byte counters of the system are not reset.
+            #if we started a new session here then it would add all transfer that has
+            #accumulated since bootup to this session, which would be wrong.
+          #end if (conf['logOnly'] == 1) and inetIsDown
+        #end if (netOperstate == "up")
+
+        if conf['doLimitDay'] == 'auto':
+          limitDay = remainingBytesDaily
+        else:
+          limitDay = conf['doLimitDay']
+
+        if (limitDay != 0) and (((st['rxBToday'] + st['txBToday']) / 1000.0) > limitDay):
+          PrintMessage('Daily transfer limit exceeded. CONNECTION LOCKED.')
+          errorCode = subprocess.call(sakisProg + 'disconnect', shell=True)
+          limitExceeded = 1
+          RaiseOfflineFlag('LOCKED (daily limit exceeded)')
+
+        if (conf['limitMonth'] != 0) and (((st['rxBMonth'] + st['txBMonth']) / 1000.0) > conf['limitMonth']):
+          PrintMessage('Monthly transfer limit exceeded. CONNECTION LOCKED.')
+          errorCode = subprocess.call(sakisProg + 'disconnect', shell=True)
+          limitExceeded = 1
+          RaiseOfflineFlag('LOCKED (monthly limit exceeded)')
+      #end if not limitExceeded
+
+      DoStats()
+
+      #periodically call DDNS updater if necessary:
+      if dnsUpdater.enabled and \
+        ( (conf['logOnly'] and (time() >= st['dDNSNextTest'])) or \
+          (st['dDNSLockedUntil'] and (time() > st['dDNSLockedUntil'])) \
+        ):
+        dnsUpdater.Update()
+
+    #end if (not inetIsDown) or conf['logOnly']
+
+
+    if statFileComplete: #write stat file only if stats have been done
+      WriteStatFile()
+      WriteStatFileHTML()
+      if time() > nextStatCopySecond:
+        SecureStatFiles()
+
+    sleep(conf['statCycle'])
+  #end  #endless loop
+#end Main
+
+
+def GetOldPID():
+  try:
+    f = file(conf['tempPath'] + progName + '.pid', 'r')
+    pid = int(f.read())
+    f.close()
+  except IOError: pid = 0
+  return pid
+
+
+def TerminateOldInstance():
+  pid = GetOldPID()
+  if pid:
+    PrintMessage('Sending SIGTERM signal to running program instance with PID=%d.' % pid)
+    try:
+      os.kill(pid, signal.SIGTERM)
+      sleep(2) #let other instance terminate gracefully
+    except: pass
+#end TerminateOldInstance
+
+
+def ConnectOldInstance():
+  pid = GetOldPID()
+  if pid:
+    PrintMessage('Sending CONNECT message to running program instance with PID=%d.' % pid)
+    os.kill(pid, signal.SIGUSR1)
+#end ConnectOldInstance
+
+
+def SigHandler(signum = None, frame = None):
+  sigs = {1: 'SIGHUP', 2: 'SIGINT', 3: 'SIGQUIT', 6: 'SIGABRT', 10: 'SUGUSR1', 15: 'SIGTERM'}
+  quitSigs = [1, 2, 3, 6, 15]
+  PrintMessage('(PID: %d): Caught signal %d (%s)' % (os.getpid(), signum, sigs[signum]), 1)
+  if signum in quitSigs:
+    sys.exit(0) #this calls the ExitProc hook
+  elif signum == signal.SIGUSR1:
+    SakisReconnect()
+#end SigHandler
+
+
+#cleanup procedure: should be called on program termination
+def ExitProc():
+  if conf['tempPath'] != conf['statFilePath']: copy(statFile, conf['statFilePath']) #secure current statfile (be sure we have it secured in case a shutdown process kills the prog)
+  if (not inetIsDown):
+    DoStats()
+  if statFileComplete: #write stat file only if stats have been done
+    WriteStatFile()
+    if conf['tempPath'] != conf['statFilePath']: copy(statFile, conf['statFilePath']) #secure updated statfile
+  if conf['httpServer'] and httpD:
+    httpD.socket.shutdown(2) #2=socket.SHUT_RDWR
+    httpD.socket.close()
+  pid = GetOldPID()
+  if pid == os.getpid(): os.remove(conf['tempPath'] + progName + '.pid') #remove pid file if it is our own
+
+  PrintMessage('(PID: %d): Program terminated cleanly.' % os.getpid(), 1)
+#end ExitProc
+
+
+
+######################
+#### main program ####
+######################
+#hook break signals to our own cleanup procedure (ExitProc) for clean program termination. Most likely, this program will run as a deamon and thus will always be terminated by signal.:
+for sig in [signal.SIGTERM, signal.SIGINT, signal.SIGHUP, signal.SIGQUIT, signal.SIGABRT, signal.SIGUSR1]:
+  signal.signal(sig, SigHandler)
+
+ParseRunArguments()
+
+try:
+  PrintMessage('---', 0)
+except IOError, err:
+  if err.errno == 13: #permission denied -> switch to "no root" mode
+    ConfNoRoot()
+    PrintMessage('---', 0)
+
+PrintMessage('Start: PID = %d' % os.getpid())
+
+if confFile != '': #if we have a conffile, run it
+  PrintMessage('Using config file ' + confFile)
+  execfile(confFile)
+  ParseRunArguments() #parse args again so that command line args override conffile
+
+statFile = conf['tempPath'] + statFileName
+statFileHTML = conf['tempPath'] + statFileHTMLName
+monthlyFile = conf['statFilePath'] + monthlyFileName
+dailyFile = conf['statFilePath'] + dailyFileName
+hourlyFile = conf['statFilePath'] + hourlyFileName
+
+conf['runHTMLReloadInterval'] = conf['htmlReloadInterval']
+conf['runHTMLShowLog'] = conf['htmlShowLog']
+conf['runHTMLShowGraphs'] = conf['htmlShowGraphs']
+conf['runDDNSRetry'] = 0
+
+atexit.register(ExitProc) #register cleanup procedure
+
+#make temporary directory:
+if not os.path.isdir(conf['tempPath']): os.mkdir(conf['tempPath'])
+#copy files to temppath:
+flist = [progPath+statFileName, progPath+statFileName+'~', progPath+'style.css', progPath+'favicon.ico', progPath+'robots.txt']
+for f in flist:
+  try: copy(f, conf['tempPath'])
+  except: pass
+
+#kill old instances of this prog:
+TerminateOldInstance()
+
+#make pidfile:
+f = file(conf['tempPath'] + progName + '.pid', 'w')
+f.write(str(os.getpid()))
+f.close()
+
+
+MigrateStats()
+
+#killme
+#backup statfile into log: this is still in for safety while in beta
+ReadStatFile()
+statFileBackup = statFile
+statFile = conf['logFile']
+WriteStatFile(True)
+statFile = statFileBackup
+
+SetupGraphs()
+
+RefreshGraphs()
+
+dnsUpdater = DNSUpdater()
+
+PrintMessage('stats period = ' + str(conf['testCycle']) + 's, connection check period = ' + str(conf['statCycle'] * conf['testCycle']) + 's')
+
+if conf['ifaceNAT'] != '': DoNAT(conf['ifaceNAT'])
+
+SetupLogFiles()
+
+if conf['httpServer']:
+  httpD = ThreadedHTTPServer(('', conf['httpPort']), HTTPHandler)
+#   while c:
+#   c = 4
+#     try:
+#       sys.exc_clear() #clear exception
+#       httpD = ThreadedHTTPServer(('', conf['httpPort']), HTTPHandler)
+#     except Exception, e:
+#       c -= 1
+#       if c:
+#         PrintMessage('HTTP server: port %d already in use. Waiting (%d) 5 sec for other server to exit...' % (conf['httpPort'], c), False)
+#         sleep(5)
+#       else:
+#         PrintMessage('HTTP server: could not bind to socket. Some other program is using port %s' % conf['httpPort'], False)
+#         httpD = False
+#         sys.exit()
+
+  PrintMessage('HTTP server listening on port ' + str(conf['httpPort']), False)
+  thread.start_new_thread(httpD.serve, ())
+#end if conf['httpServer']
+
+
+Main()
