@@ -44,7 +44,7 @@ class autocopterDronekit(object):
         #проверка на подключается или нет
         #цикл пока не подключится?
         #http://python.dronekit.io/automodule.html#dronekit.connect
-        self.vehicle = connect('tcp:127.0.0.1:14600', wait_ready=True,status_printer=14)
+        self.vehicle = connect('tcp:127.0.0.1:14600', wait_ready=True,status_printer=status_printer(txt))
     def status_printer(txt):
         print('status urpylka')
         print(txt)
@@ -62,6 +62,7 @@ class autocopterDronekit(object):
             self.vehicle.close()
     def get_status(self):
         # Get some vehicle attributes (state)
+        self.vehicle.mode = VehicleMode("GUIDED")
         buf = "Get some vehicle attribute values:" + \
               "\nGPS: %s" % self.vehicle.gps_0 + \
               "\nBattery: %s" % self.vehicle.battery + \
