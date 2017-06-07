@@ -55,7 +55,7 @@ try:
     dronekit = autocopterDronekit  # для доступности в finally (ВРОДЕ КАК НЕ НАДО)
     # ========================================
     if DEBUG:
-        print (dronekit.status)
+        print (dronekit.status())
         bot.sendMessage(62922848, dronekit.status)
     time.sleep(10)
     # ========================================
