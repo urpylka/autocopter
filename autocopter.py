@@ -21,7 +21,7 @@ try:
         print(content_type, chat_type, chat_id)
         if chat_id == 62922848:
             #global STATE #https://foxford.ru/wiki/informatika/oblasti-vidimosti-peremennyh-v-python#!
-            if STATE == 'INIT':
+            if STATE != 'INIT':
                 if content_type == 'text':
                     if msg['text'] == '/start':
                         # попытка совершения полета в указанную точку в режиме APM AUTO
