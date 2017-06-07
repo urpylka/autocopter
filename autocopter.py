@@ -20,7 +20,7 @@ try:
         content_type, chat_type, chat_id = telepot.glance(msg)
         print(content_type, chat_type, chat_id)
         if chat_id == 62922848:
-            global STATE #https://foxford.ru/wiki/informatika/oblasti-vidimosti-peremennyh-v-python#!
+            #global STATE #https://foxford.ru/wiki/informatika/oblasti-vidimosti-peremennyh-v-python#!
             if STATE == 'INIT':
                 if content_type == 'text':
                     if msg['text'] == '/start':
@@ -61,7 +61,7 @@ try:
     from dronekit_functions import *
     dronekit = autocopterDronekit  # для доступности в finally (ВРОДЕ КАК НЕ НАДО)
     if dronekit.status_of_connect:
-        global STATE
+        #global STATE
         STATE = 'IDLE'
         if DEBUG:
             print ('Connect successful!')
