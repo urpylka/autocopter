@@ -29,7 +29,13 @@ try:
                     elif msg['text'] == '/status':
                         # вывод информации о коптере, ip, заряд батареи
                         #bot.sendMessage(chat_id, 'preparing status...')
-                        bot.sendMessage(62922848, "copter ip: %s" % get_ip() + '\n' + dronekit.get_status() + '\nSTATE: %s' % STATE)
+                        bot.sendMessage(62922848, "copter ip: %s" % get_ip() + '\n' + dronekit.get_status + '\nSTATE: %s' % STATE)
+                        bot.sendMessage(62922848,
+                                        "copter ip: %s" % get_ip() + '\n' + dronekit.get_status() + '\nSTATE: %s' % STATE)
+                        bot.sendMessage(62922848,
+                                        "copter ip: %s" % get_ip() + '\n' + dronekit.get_status(dronekit) + '\nSTATE: %s' % STATE)
+                        bot.sendMessage(62922848,
+                                        "copter ip: %s" % get_ip() + '\n' + dronekit.get_status(autocopterDronekit) + '\nSTATE: %s' % STATE)
                     elif msg['text'] == '/stop':
                         # остановка всех операций в MACHINE STATE и перевод в IDLE
                         bot.sendMessage(chat_id, 'stop all operations, go to IDLE STATE')
@@ -53,6 +59,8 @@ try:
     from other_functions import get_ip
     bot.sendMessage(62922848, "Copter is online: %s" % get_ip())
     bot.message_loop(handle)
+    import time
+    time.sleep(1.5) #время на ответ сообщений пришедших в выключенный период
     if DEBUG:
         print ('Listening ...')
         bot.sendMessage(62922848, 'Listening ...')
