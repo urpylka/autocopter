@@ -1,6 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: utf8 -*-
 DEBUG = True
+
+# Устранение проблем с кодировкой UTF-8
+# http://webhamster.ru/mytetrashare/index/mtb0/13566385393amcr1oegx
+import sys
+reload(sys)
+sys.setdefaultencoding('utf8')
+
 from other_functions import wait_internet
 wait_internet()
 STATE = 'INIT'
