@@ -68,7 +68,13 @@ class autocopterDronekit(object):
               "\nLast Heartbeat: %s" % self.vehicle.last_heartbeat + \
               "\nIs Armable?: %s" % self.is_armable + \
               "\nSystem status: %s" % self.vehicle.system_status.state + \
-              "\nMode: %s" % self.vehicle.mode.name  # settable
+              "\nMode: %s" % self.vehicle.mode.name + \
+              "\nGlobal Location: %s" % self.vehicle.location.global_frame + \
+              "\nLocal Location: %s" % self.vehicle.location.local_frame + \
+              "\nAttitude: %s" % self.vehicle.attitude + \
+              "\nHeading: %s" % self.vehicle.heading + \
+              "\nGroundspeed: %s" % self.vehicle.groundspeed + \
+              "\nAirspeed: %s" % self.vehicle.airspeed
         return buf
     def distance_to_current_waypoint(self):
         """
@@ -145,6 +151,13 @@ class autocopterDronekit(object):
         # check that we have a GPS fix
         # check that EKF pre-arm is complete
         return self.vehicle.mode != 'INITIALISING' and self.vehicle.gps_0.fix_type > 1# and self.vehicle._ekf_predposhorizabs #отключена проверка ekf
+    def simple_goto_wrapper(self,lat,lot,alt=20,groundspeed=7.5):
+        # Задаем координаты нужной точки
+        a_location = LocationGlobalRelative(lat,lot,alt)
+        # полетели
+        self.vehicle.simple_goto(a_location)
+        # Путевая скорость, м/с
+        self.vehicle.groundspeed = groundspeed
     def arm_and_takeoff(self, aTargetAltitude):
         """
         Arms vehicle and fly to aTargetAltitude.

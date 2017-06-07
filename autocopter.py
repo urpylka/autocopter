@@ -8,13 +8,18 @@ import sys
 reload(sys)
 sys.setdefaultencoding('utf8')
 
+# блокировка до тех пор, пока не будет соединения с интернетом
 from other_functions import wait_internet
 wait_internet()
+
 STATE = 'INIT'
 try:
-    # нужно проверку когда подключится - логи в телегу и в файл
     # START TELEGRAM BOT
     import sys, telepot
+    TOKEN = sys.argv[1]  # get token from command-line
+    bot = telepot.Bot(TOKEN)
+    from other_functions import get_ip
+    bot.sendMessage(62922848, "Autocopter is online: %s" % get_ip())
     def handle(msg):
         """хендлер выполняется в отдельном потоке, вызывается событием на подобие блокирующей очереди"""
         content_type, chat_type, chat_id = telepot.glance(msg)
@@ -49,16 +54,10 @@ try:
                 bot.sendMessage(chat_id, 'Ошибка 1! Команда \"'+msg['text']+'\" не может быть выполнена. STATE == INIT')
         else:
             bot.sendMessage(chat_id, 'Ошибка 3! Access error!')
-    TOKEN = sys.argv[1]  # get token from command-line
-    bot = telepot.Bot(TOKEN)
-    from other_functions import get_ip
-    bot.sendMessage(62922848, "Copter is online: %s" % get_ip())
     bot.message_loop(handle)
     import time
     time.sleep(1.5) #время на ответ сообщений пришедших в выключенный период
     if DEBUG:
-        print ('Listening ...')
-        bot.sendMessage(62922848, 'Listening ...')
         print ('Connecting to APM ...')
         bot.sendMessage(62922848, 'Connecting to APM ...')
     from dronekit_functions import *
@@ -69,6 +68,8 @@ try:
         if DEBUG:
             print ('Connect successful!')
             bot.sendMessage(62922848, 'Connect successful!')
+            print ('Listening ...')
+            bot.sendMessage(62922848, 'Listening ...')
     # Keep the program running.
     while 1:
         if STATE == 'IDLE':
