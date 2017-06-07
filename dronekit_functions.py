@@ -48,7 +48,6 @@ class autocopterDronekit(object):
         #цикл пока не подключится?
         #http://python.dronekit.io/automodule.html#dronekit.connect
         self.vehicle = connect('tcp:127.0.0.1:14600', wait_ready=True,status_printer=status_printer)
-
     def status(self):
         return self.status
     def status_of_connect(self):
@@ -67,7 +66,7 @@ class autocopterDronekit(object):
               "\nGPS: %s" % self.vehicle.gps_0 + \
               "\nBattery: %s" % self.vehicle.battery + \
               "\nLast Heartbeat: %s" % self.vehicle.last_heartbeat + \
-              "\nIs Armable?: %s" % self.vehicle.is_armable + \
+              "\nIs Armable?: %s" % self.is_armable + \
               "\nSystem status: %s" % self.vehicle.system_status.state + \
               "\nMode: %s" % self.vehicle.mode.name  # settable
         return buf
