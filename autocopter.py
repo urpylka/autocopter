@@ -1,23 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf8 -*-
-#import time
-#time.sleep(180000)
-import socket, time
-def check_internet():
-    try:
-        socket.gethostbyaddr('ya.ru')
-    except socket.gaierror:
-        return False
-    return True
-while not check_internet():
-    time.sleep(1)
-def get_ip():
-    import http.client
-    conn = http.client.HTTPConnection("smirart.ru")
-    conn.request("GET", "/ip")
-    return conn.getresponse().read()
-vehicle = None #для доступности в finally
+DEBUG = True
+from other_functions import wait_internet
+wait_internet()
+STATE = 'INIT'
 try:
+    # нужно проверку когда подключится - логи в телегу и в файл
     # START TELEGRAM BOT
     import sys, telepot
     def handle(msg):
@@ -25,43 +13,58 @@ try:
         content_type, chat_type, chat_id = telepot.glance(msg)
         print(content_type, chat_type, chat_id)
         if chat_id == 62922848:
-            if content_type == 'text':
-                if msg['text'] == '/start':
-                    # попытка совершения полета в указанную точку в режиме APM AUTO
-                    bot.sendMessage(chat_id, 'try starting mission...')
-                elif msg['text'] == '/status':
-                    # вывод информации о коптере, ip, заряд батареи
-                    #bot.sendMessage(chat_id, 'preparing status...')
-                    bot.sendMessage(62922848, "copter ip: %s" % get_ip() + '\n' + get_status(vehicle) + '\nSTATE: %s' % STATE)
-                elif msg['text'] == '/stop':
-                    # остановка всех операций в MACHINE STATE и перевод в IDLE
-                    bot.sendMessage(chat_id, 'stop all operations, go to IDLE STATE')
-                elif msg['text'] == '/help':
-                    bot.sendMessage(chat_id,
-                                    'This Bot created for control copter\nА вообще во мне семь всевдопараллельных потоков и меня это устраивает')
+            global STATE #https://foxford.ru/wiki/informatika/oblasti-vidimosti-peremennyh-v-python#!
+            if STATE == 'INIT':
+                if content_type == 'text':
+                    if msg['text'] == '/start':
+                        # попытка совершения полета в указанную точку в режиме APM AUTO
+                        bot.sendMessage(chat_id, 'try starting mission...')
+                    elif msg['text'] == '/status':
+                        # вывод информации о коптере, ip, заряд батареи
+                        #bot.sendMessage(chat_id, 'preparing status...')
+                        bot.sendMessage(62922848, "copter ip: %s" % get_ip() + '\n' + dronekit.get_status() + '\nSTATE: %s' % STATE)
+                    elif msg['text'] == '/stop':
+                        # остановка всех операций в MACHINE STATE и перевод в IDLE
+                        bot.sendMessage(chat_id, 'stop all operations, go to IDLE STATE')
+                    elif msg['text'] == '/help':
+                        bot.sendMessage(chat_id,
+                                        'This Bot created for control copter\nА вообще во мне семь всевдопараллельных потоков и меня это устраивает')
+                    else:
+                        bot.sendMessage(chat_id, 'Ошибка 4! Некорректная текстовая команда')
+                elif content_type == 'location':
+                    # расчет возможности полета в заданные координаты и построение полетного задания
+                    #bot.sendMessage(chat_id, 'preparing mission...')
+                    bot.sendMessage(chat_id, str(msg['location']['latitude'])+'\n'+str(msg['location']['longitude']))
                 else:
-                    bot.sendMessage(chat_id, 'Bad command!')
-            elif content_type == 'location':
-                # расчет возможности полета в заданные координаты и построение полетного задания
-                #bot.sendMessage(chat_id, 'preparing mission...')
-                bot.sendMessage(chat_id, str(msg['location']['latitude'])+'\n'+str(msg['location']['longitude']))
+                    bot.sendMessage(chat_id, 'Ошибка 2! Неверный тип: только text и location')
             else:
-                bot.sendMessage(chat_id, 'Bad command!')
+                bot.sendMessage(chat_id, 'Ошибка 1! Команда \"'+msg['text']+'\" не может быть выполнена. STATE == INIT')
         else:
-            bot.sendMessage(chat_id, 'Access error!')
+            bot.sendMessage(chat_id, 'Ошибка 3! Access error!')
     TOKEN = sys.argv[1]  # get token from command-line
     bot = telepot.Bot(TOKEN)
+    from other_functions import get_ip
+    bot.sendMessage(62922848, "Copter is online: %s" % get_ip())
     bot.message_loop(handle)
-    print ('Listening ...')
-    ###########################################
-    # Connect to the Vehicle (in this case a UDP endpoint)
-
-    # здесь же запуск вспомогательных потоков
-    ###########################################
-    bot.sendMessage(62922848, "Starting main daemon, copter is online: %s" % get_ip())
-    import time
+    if DEBUG:
+        print ('Listening ...')
+        bot.sendMessage(62922848, 'Listening ...')
+        print ('Connecting to APM ...')
+        bot.sendMessage(62922848, 'Connecting to APM ...')
+    from dronekit_functions import *
+    dronekit = autocopterDronekit  # для доступности в finally (ВРОДЕ КАК НЕ НАДО)
+    # ========================================
+    if DEBUG:
+        print (dronekit.status)
+        bot.sendMessage(62922848, dronekit.status)
+    time.sleep(10)
+    # ========================================
+    if dronekit.status_of_connect:
+        STATE = 'IDLE'
+        if DEBUG:
+            print ('Connect successful!')
+            bot.sendMessage(62922848, 'Connect successful!')
     # Keep the program running.
-    STATE = 'IDLE'
     while 1:
         if STATE == 'IDLE':
             pass
@@ -69,11 +72,14 @@ try:
             pass
         elif STATE == 'EMERGY_STOP':
             pass
+        elif STATE == 'INIT':
+            pass
         else:
             pass
+        import time
         time.sleep(1)
 finally:
-
+    dronekit.disconnect
     print('\n######################################################')
     print('\nFinally success!\n')
     print('######################################################\n')

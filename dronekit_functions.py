@@ -39,12 +39,17 @@ def get_distance_metres(aLocation1, aLocation2):
     return math.sqrt((dlat * dlat) + (dlong * dlong)) * 1.113195e5
 class autocopterDronekit(object):
     def __init__(self):
+        self.vehicle = None
         # Connect to the Vehicle (in this case a UDP endpoint)
         #проверка на подключается или нет
         #цикл пока не подключится?
-        self.vehicle = connect('tcp:127.0.0.1:14600', wait_ready=True)
+        #http://python.dronekit.io/automodule.html#dronekit.connect
+        self.vehicle = connect('tcp:127.0.0.1:14600', wait_ready=True,status_printer=True)
+    def status_printer(self,txt):
+        self.status=txt
+        print(txt)
     def status_of_connect(self):
-        pass
+        return True
     def disconnect(self):
         '''
         Close vehicle object before exiting script
