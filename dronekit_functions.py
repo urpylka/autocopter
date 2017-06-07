@@ -44,7 +44,7 @@ class autocopterDronekit(object):
         #проверка на подключается или нет
         #цикл пока не подключится?
         #http://python.dronekit.io/automodule.html#dronekit.connect
-        self.vehicle = connect('tcp:127.0.0.1:14600', wait_ready=True,status_printer=True)
+        self.vehicle = connect('tcp:127.0.0.1:14600', wait_ready=True,status_printer=14)
     def status_printer(txt):
         print('status urpylka')
         print(txt)

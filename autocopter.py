@@ -30,7 +30,7 @@ try:
                         # вывод информации о коптере, ip, заряд батареи
                         #bot.sendMessage(chat_id, 'preparing status...')
                         bot.sendMessage(62922848,
-                                        "copter ip: %s" % get_ip() + '\n' + dronekit.get_status + '\nSTATE: %s' % STATE)
+                                        "copter ip: %s" % get_ip() + '\n' + dronekit.get_status() + '\nSTATE: %s' % STATE)
                     elif msg['text'] == '/stop':
                         # остановка всех операций в MACHINE STATE и перевод в IDLE
                         bot.sendMessage(chat_id, 'stop all operations, go to IDLE STATE')
