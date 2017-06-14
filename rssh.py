@@ -19,4 +19,6 @@ p2 = subprocess.Popen(['/home/pi/autocopter/build/rssh2.sh'], subprocess.PIPE)
 # потом переделать под это https://pythonworld.ru/moduli/modul-subprocess.html
 # ==========================================================================================================
 while 1:
+    import time
+    time.sleep(10)
     pass
