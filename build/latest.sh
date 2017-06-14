@@ -11,7 +11,7 @@ git clone https://github.com/urpylka/autocopter.git
 chmod +x autocopter/build/*
 chmod +x autocopter/autocopter.py
 
-cp -f autocopter/daemons/rssh /etc/init.d/rssh
+cp -f autocopter/daemons/rssh /etc/init.d/rssh # лучше делать символьные ссылки рекурсивно
 chmod +x /etc/init.d/rssh
 chown root:root /etc/init.d/rssh
 update-rc.d rssh defaults
