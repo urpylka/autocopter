@@ -16,6 +16,7 @@ wait_internet()
 import subprocess
 p = subprocess.Popen(['/home/pi/autocopter/build/rssh.sh'], stdout=subprocess.PIPE)
 #line = p.stdout.readline()
+# потом переделать под это https://pythonworld.ru/moduli/modul-subprocess.html
 
 STATE = 'INIT'
 try:
