@@ -1,4 +1,8 @@
 #! /bin/sh
+service autocopter stop
+service mavgateway stop
+service umtskeeper stop
+
 cd /home/pi
 rm -rf autocopter
 git clone https://github.com/urpylka/autocopter.git
