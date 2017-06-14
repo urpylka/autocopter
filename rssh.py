@@ -9,10 +9,10 @@ wait_internet()
 import subprocess
 p = subprocess.Popen(['/home/pi/autocopter/build/rssh.sh'], stdout=subprocess.PIPE)
 p2 = subprocess.Popen(['/home/pi/autocopter/build/rssh2.sh'], stdout=subprocess.PIPE)
-line = p.stdout.readline()
-print line.strip()
-line2 = p2.stdout.readline()
-print line2.strip()
+#line = p.stdout.readline()
+#print line.strip()
+#line2 = p2.stdout.readline()
+#print line2.strip()
 # line = p.stdout.readline()
 # потом переделать под это https://pythonworld.ru/moduli/modul-subprocess.html
 # ==========================================================================================================
