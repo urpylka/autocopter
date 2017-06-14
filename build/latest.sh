@@ -5,12 +5,12 @@ service umtskeeper stop
 service rssh stop
 
 cd /home/pi
-rm -rf autocopter
+rm -rf autocopter # надо сначала проверить есть интернет или нет (точнее доступ к гитхаб)
 git clone https://github.com/urpylka/autocopter.git
 
 chmod +x autocopter/build/*
-chmod +x autocopter/autocopter.py
 
+chmod +x autocopter/rssh.py
 cp -f autocopter/daemons/rssh /etc/init.d/rssh # лучше делать символьные ссылки рекурсивно
 chmod +x /etc/init.d/rssh
 chown root:root /etc/init.d/rssh
@@ -29,6 +29,7 @@ chmod +x /etc/init.d/mavgateway
 chown root:root /etc/init.d/mavgateway
 update-rc.d mavgateway defaults
 
+chmod +x autocopter/autocopter.py
 cp -f autocopter/daemons/autocopter /etc/init.d/autocopter
 chmod +x /etc/init.d/autocopter
 chown root:root /etc/init.d/autocopter
