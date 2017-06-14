@@ -15,6 +15,7 @@ chmod +x /etc/init.d/umtskeeper
 chown root:root /etc/init.d/umtskeeper
 update-rc.d umtskeeper defaults
 
+chmod +x autocopter/3g_modem/umtskeeper_beeline.sh
 cp -f autocopter/daemons/mavgateway /etc/init.d/mavgateway
 chmod +x /etc/init.d/mavgateway
 chown root:root /etc/init.d/mavgateway
