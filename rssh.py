@@ -10,7 +10,7 @@ print 'internet'
 import subprocess
 p = subprocess.Popen(['/home/pi/autocopter/build/rssh.sh'], subprocess.PIPE)
 print 'smirart.ru:2202'
-#p2 = subprocess.Popen(['/home/pi/autocopter/build/rssh2.sh'], subprocess.PIPE)
+p2 = subprocess.Popen(['/home/pi/autocopter/build/rssh2.sh'], subprocess.PIPE)
 #print 'smirart.ru:5760'
 #p = subprocess.Popen(['/home/pi/autocopter/build/rssh.sh'], stdout=subprocess.PIPE)
 #p2 = subprocess.Popen(['/home/pi/autocopter/build/rssh2.sh'], stdout=subprocess.PIPE)
