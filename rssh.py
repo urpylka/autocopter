@@ -18,3 +18,5 @@ p2 = subprocess.Popen(['/home/pi/autocopter/build/rssh2.sh'], subprocess.PIPE)
 # line = p.stdout.readline()
 # потом переделать под это https://pythonworld.ru/moduli/modul-subprocess.html
 # ==========================================================================================================
+while 1:
+    pass
