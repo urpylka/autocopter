@@ -2,6 +2,7 @@
 service autocopter stop
 service mavgateway stop
 service umtskeeper stop
+service rssh stop
 
 cd /home/pi
 rm -rf autocopter
@@ -9,6 +10,11 @@ git clone https://github.com/urpylka/autocopter.git
 
 chmod +x autocopter/build/*
 chmod +x autocopter/autocopter.py
+
+cp -f autocopter/daemons/rssh /etc/init.d/rssh
+chmod +x /etc/init.d/rssh
+chown root:root /etc/init.d/rssh
+update-rc.d rssh defaults
 
 cp -f autocopter/daemons/umtskeeper /etc/init.d/umtskeeper
 chmod +x /etc/init.d/umtskeeper
@@ -31,6 +37,7 @@ update-rc.d autocopter defaults
 service autocopter start
 service mavgateway start
 service umtskeeper start
+service rssh start
 
 # FOR DEBUG
 #python autocopter/autocopter.py 'TOKEN'
