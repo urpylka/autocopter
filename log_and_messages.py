@@ -5,7 +5,7 @@ class log_and_messages(object):
         self._bot = bot
         self._DEBUG = DEBUG
         self._chatId = chatId
-        self._bot.sendMessage(self._chatId, "msg2%s" %self._DEBUG)
+        self._bot.sendMessage(self._chatId, "msg2 %s" % self._DEBUG)
     def deb_pr_tel(self,msg):
         if self._DEBUG:
             print(msg)
