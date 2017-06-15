@@ -51,8 +51,8 @@ try:
                                 # bot.sendMessage(chat_id, 'preparing status...')
                                 log_and_messages.deb_pr_tel("copter ip: %s" % get_ip() + '\n' + dronekit.get_status() + '\nSTATE: %s' % STATE)
                             elif msg['text'] == '/stop':
-                                global dronekit
-                                dronekit.motors_off()
+                                dronekit.stop_takeoff = True
+                                #dronekit.motors_off()
                                 # остановка всех операций в MACHINE STATE и перевод в IDLE
                                 log_and_messages.deb_pr_tel('stop all operations, go to IDLE STATE')
                             elif msg['text'] == '/help':

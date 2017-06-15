@@ -48,6 +48,7 @@ class autocopterDronekit(object):
         #цикл пока не подключится?
         #http://python.dronekit.io/automodule.html#dronekit.connect
         self.vehicle = connect('tcp:127.0.0.1:14600', wait_ready=True,status_printer=status_printer)
+        self.stop_takeoff = False
     def status(self):
         return self.status
     def status_of_connect(self):
@@ -179,30 +180,47 @@ class autocopterDronekit(object):
         """
         Arms vehicle and fly to aTargetAltitude.
         """
+        global stop_takeoff
         log_and_messages.deb_pr_tel('Basic pre-arm checks')
         # Don't let the user try to arm until autopilot is ready
         while not self.is_armable: #проверка не дронкита, а собственная
-            log_and_messages.deb_pr_tel('Waiting for vehicle to initialise...')
-            time.sleep(1)
+            if not self.stop_takeoff:
+                log_and_messages.deb_pr_tel('Waiting for vehicle to initialise...')
+                time.sleep(1)
+            else:
+                log_and_messages.deb_pr_tel('Stopping takeoff on pre-arm!')
+                return
         log_and_messages.deb_pr_tel('Arming motors')
         # Copter should arm in GUIDED mode
         self.vehicle.mode = VehicleMode("GUIDED")
         self.vehicle.armed = True
 
         while not self.vehicle.armed:
-            log_and_messages.deb_pr_tel('Waiting for arming...')
-            time.sleep(1)
+            if not self.stop_takeoff:
+                log_and_messages.deb_pr_tel('Waiting for arming...')
+                time.sleep(1)
+            else:
+                log_and_messages.deb_pr_tel('Stopping takeoff on arm!')
+                self.vehicle.armed = False
+                return
         log_and_messages.deb_pr_tel('Taking off!')
         self.vehicle.simple_takeoff(aTargetAltitude)  # Take off to target altitude
 
         # Wait until the vehicle reaches a safe height before processing the goto (otherwise the command
         #  after Vehicle.simple_takeoff will execute immediately).
         while True:
-            log_and_messages.deb_pr_tel("Altitude: %s" % self.vehicle.location.global_relative_frame.alt)
-            if self.vehicle.location.global_relative_frame.alt >= aTargetAltitude * 0.95:  # Trigger just below target alt.
-                log_and_messages.deb_pr_tel("Reached target altitude")
-                break
-            time.sleep(1)
+            if not self.stop_takeoff:
+                log_and_messages.deb_pr_tel("Altitude: %s" % self.vehicle.location.global_relative_frame.alt)
+                if self.vehicle.location.global_relative_frame.alt >= aTargetAltitude * 0.95:  # Trigger just below target alt.
+                    log_and_messages.deb_pr_tel("Reached target altitude")
+                    break
+                time.sleep(1)
+            else:
+                self.vehicle.armed = False
+                log_and_messages.deb_pr_tel('Stopping takeoff on fly!')
+                #self.vehicle.attitude
+                return
+
     def motors_off(self):
         msg = self.vehicle.message_factory.command_long_encode(
             0, 0,  # target system, target component
