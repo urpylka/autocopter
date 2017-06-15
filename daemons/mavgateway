@@ -18,7 +18,7 @@ PATH=/sbin:/usr/sbin:/bin:/usr/bin
 DESC="Mavproxy based mavlink to wifi gateway"
 NAME=mavproxy.py
 DAEMON=/usr/local/bin/$NAME
-DAEMON_ARGS="--master=/dev/ttyAMA0,57600 --out=tcpin:0.0.0.0:5760 --out=tcpin:0.0.0.0:14600 --daemon"
+DAEMON_ARGS="--master=/dev/ttyAMA0,57600 --out=tcpin:0.0.0.0:5760 --out=tcpin:127.0.0.1:14600 --daemon"
 PIDFILE=/var/run/$NAME.pid
 SCRIPTNAME=/etc/init.d/$NAME
 
