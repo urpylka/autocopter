@@ -142,11 +142,12 @@ class autocopterDronekit(object):
         print " Upload new commands to vehicle"
         cmds.upload()
     def switch_to_IDLE(self,log_and_messages):
-        log_and_messages.deb_pr_tel('Go to IDLE STATE. Switching MODE = GUIDED, and Disarm')
+        log_and_messages.deb_pr_tel('Switch to IDLE STATE')
         self.vehicle.mode = VehicleMode("GUIDED")
+        log_and_messages.deb_pr_tel('MODE = GUIDED')
         self.vehicle.armed = False
         log_and_messages.deb_pr_tel('Disarming...')
-        log_and_messages.deb_pr_tel('IDLE STATE: MODE = GUIDED, Armed = False')
+        log_and_messages.deb_pr_tel('IDLE STATE activated!')
     def switch_to_GUIDED(self,log_and_messages):
         log_and_messages.deb_pr_tel('Go to GUIDED STATE.')
         self.vehicle.mode = VehicleMode("GUIDED")
