@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# окружение https://losst.ru/napisanie-skriptov-na-bash
 #service autocopter stop
 #service mavgateway stop
 #service umtskeeper stop

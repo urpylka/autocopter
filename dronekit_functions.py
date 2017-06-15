@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 # -*- coding: utf8 -*-
 # Import DroneKit-Python
 from dronekit import VehicleMode, LocationGlobalRelative, LocationGlobal, Command, connect
@@ -62,7 +62,7 @@ class autocopterDronekit(object):
             self.vehicle.close()
     def get_status(self):
         # Get some vehicle attributes (state)
-        self.vehicle.mode = VehicleMode("STABILIZE")
+        self.vehicle.mode = VehicleMode("LAND")
         buf = "Get some vehicle attribute values:" + \
               "\nGPS: %s" % self.vehicle.gps_0 + \
               "\nBattery: %s" % self.vehicle.battery + \
