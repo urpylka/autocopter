@@ -10,7 +10,7 @@ from dronekit_functions import *
 reload(sys)
 sys.setdefaultencoding('utf8')
 
-dronekit = autocopterDronekit()  # для доступности в finally (ВРОДЕ КАК НЕ НАДО)
+#dronekit = autocopterDronekit()  # для доступности в finally (ВРОДЕ КАК НЕ НАДО)
 STATE = 'INIT'
 try:
     while 1:
@@ -25,8 +25,7 @@ try:
             bot = telepot.Bot(TOKEN)
             # ==========================================================================================================
             log_and_messages = log_and_messages(bot)
-            bot.sendMessage(62922848, 'msg')
-            #log_and_messages.deb_pr_tel("Autocopter is online: %s" % get_ip())
+            log_and_messages.deb_pr_tel("Autocopter is online: %s" % get_ip())
 
             def handle(msg):
                 """хендлер выполняется в отдельном потоке, вызывается событием на подобие блокирующей очереди"""
@@ -65,7 +64,7 @@ try:
             time.sleep(1.5)  # время на ответ сообщений пришедших в выключенный период
 
             log_and_messages.deb_pr_tel('Connecting to APM ...')
-            #dronekit = autocopterDronekit()  # для доступности в finally (ВРОДЕ КАК НЕ НАДО)
+            dronekit = autocopterDronekit()  # для доступности в finally (ВРОДЕ КАК НЕ НАДО)
             if dronekit.status_of_connect:
                 # global STATE
                 STATE = 'IDLE'
