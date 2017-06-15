@@ -10,7 +10,7 @@ from dronekit_functions import *
 reload(sys)
 sys.setdefaultencoding('utf8')
 
-dronekit = None
+dronekit = autocopterDronekit()  # для доступности в finally (ВРОДЕ КАК НЕ НАДО)
 STATE = 'INIT'
 try:
     while 1:
@@ -65,7 +65,7 @@ try:
             time.sleep(1.5)  # время на ответ сообщений пришедших в выключенный период
 
             log_and_messages.deb_pr_tel('Connecting to APM ...')
-            dronekit = autocopterDronekit()  # для доступности в finally (ВРОДЕ КАК НЕ НАДО)
+            #dronekit = autocopterDronekit()  # для доступности в finally (ВРОДЕ КАК НЕ НАДО)
             if dronekit.status_of_connect:
                 # global STATE
                 STATE = 'IDLE'
