@@ -107,6 +107,9 @@ try:
             elif nextTakeOffState == 'GOTO':
                 STATE = 'GOTO'
                 log_and_messages.deb_pr_tel('Switch to GOTO')
+            elif nextTakeOffState == 'IDLE':
+                STATE = 'IDLE'
+                log_and_messages.deb_pr_tel('КРИТИЧЕСКОЕ ЗАВЕРШЕНИЕ СОСТОЯНИЯ TAKEOFF: Switch to IDLE')
             else:
                 nextTakeOffState = "GUIDED"
                 log_and_messages.deb_pr_tel('Введенное состояние некорректное: Автоматический переход из TAKEOFF в состояние GUIDED (вообще возможны AUTO и GOTO')

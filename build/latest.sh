@@ -1,4 +1,4 @@
-#! /bin/sh
+#!/usr/bin/env bash
 #service autocopter stop
 #service mavgateway stop
 #service umtskeeper stop
