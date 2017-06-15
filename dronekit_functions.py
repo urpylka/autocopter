@@ -205,6 +205,7 @@ class autocopterDronekit(object):
                 time.sleep(1)
             else:
                 log_and_messages.deb_pr_tel('Stopping takeoff on pre-arm!')
+                self.motors_off()
                 return 'IDLE'
         # Copter should arm in GUIDED mode
         self.vehicle.mode = VehicleMode("GUIDED")
@@ -218,7 +219,7 @@ class autocopterDronekit(object):
                 time.sleep(1)
             else:
                 log_and_messages.deb_pr_tel('Stopping takeoff on arm!')
-                self.vehicle.armed = False
+                self.motors_off()
                 return 'IDLE'
         log_and_messages.deb_pr_tel('Taking off!')
         self.vehicle.simple_takeoff(aTargetAltitude)  # Take off to target altitude
@@ -235,6 +236,7 @@ class autocopterDronekit(object):
             else:
                 self.vehicle.armed = False
                 log_and_messages.deb_pr_tel('Stopping takeoff on fly!')
+                self.motors_off()
                 #self.vehicle.attitude
                 return 'IDLE'
         return 'GUIDED'
