@@ -1,8 +1,8 @@
 #! /bin/sh
-service autocopter stop
-service mavgateway stop
-service umtskeeper stop
-service rssh stop
+#service autocopter stop
+#service mavgateway stop
+#service umtskeeper stop
+#service rssh stop
 
 cd /home/pi
 rm -rf autocopter # надо сначала проверить есть интернет или нет (точнее доступ к гитхаб)
@@ -35,10 +35,10 @@ chmod +x /etc/init.d/autocopter
 chown root:root /etc/init.d/autocopter
 update-rc.d autocopter defaults
 
-service mavgateway start
-service umtskeeper start
-service rssh start
-service autocopter start
+service mavgateway restart
+service umtskeeper restart
+service rssh restart
+service autocopter restart
 
 # FOR DEBUG
 #python autocopter/autocopter.py 'TOKEN'
