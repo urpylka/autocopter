@@ -180,7 +180,7 @@ class autocopterDronekit(object):
         """
         Arms vehicle and fly to aTargetAltitude.
         """
-        global stop_takeoff
+        self.stop_takeoff = False
         log_and_messages.deb_pr_tel('Basic pre-arm checks')
         # Don't let the user try to arm until autopilot is ready
         while not self.is_armable: #проверка не дронкита, а собственная
