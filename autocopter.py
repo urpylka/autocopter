@@ -36,6 +36,8 @@ try:
                     if STATE != 'INIT':
                         if content_type == 'text':
                             if msg['text'] == '/start':
+                                if STATE == 'IDLE':
+                                    nextIdleState = "TAKEOFF"
                                 # попытка совершения полета в указанную точку в режиме APM AUTO
                                 log_and_messages.deb_pr_tel('try starting mission...')
                             elif msg['text'] == '/status':
