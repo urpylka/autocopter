@@ -96,7 +96,7 @@ try:
         elif STATE == 'TAKEOFF':
             nextTakeOffState = "GUIDED"
             targetAltitude = 20
-            nextTakeOffState = dronekit.arm_and_takeoff(targetAltitude,log_and_messages)
+            nextTakeOffState = dronekit.arm_and_takeoff(targetAltitude,log_and_messages) #возвращает следующее состояние
 
             if nextTakeOffState == 'GUIDED':
                 STATE = 'GUIDED'
@@ -159,6 +159,22 @@ try:
         elif STATE == 'AUTO':
             pass
         elif STATE == 'LAND':
+            nextLandState = "IDLE"
+            nextLandState = dronekit.switch_to_LAND(log_and_messages)  # возвращает следующее состояние
+            if nextLandState == 'GUIDED':
+                STATE = 'GUIDED'
+                log_and_messages.deb_pr_tel('Switch to GUIDED')
+            elif nextLandState == 'GOTO':
+                STATE = 'GOTO'
+                log_and_messages.deb_pr_tel('Switch to GOTO')
+            elif nextLandState == 'IDLE':
+                STATE = 'IDLE'
+                log_and_messages.deb_pr_tel('Switch to IDLE')
+            else:
+                nextLandState = "GUIDED"
+                log_and_messages.deb_pr_tel(
+                    'Введенное состояние некорректное: Автоматический переход из TAKEOFF в состояние GUIDED (вообще возможны AUTO и GOTO')
+                time.sleep(1)
             pass
         elif STATE == 'GOTO':
             pass

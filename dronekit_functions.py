@@ -49,6 +49,7 @@ class autocopterDronekit(object):
         #http://python.dronekit.io/automodule.html#dronekit.connect
         self.vehicle = connect('tcp:127.0.0.1:14600', wait_ready=True,status_printer=status_printer)
         self.stop_takeoff = False
+        self.stop_land = False
     def status(self):
         return self.status
     def status_of_connect(self):
@@ -62,7 +63,6 @@ class autocopterDronekit(object):
             self.vehicle.close()
     def get_status(self):
         # Get some vehicle attributes (state)
-        self.vehicle.mode = VehicleMode("LAND")
         buf = "Get some vehicle attribute values:" + \
               "\nGPS: %s" % self.vehicle.gps_0 + \
               "\nBattery: %s" % self.vehicle.battery + \
@@ -142,6 +142,22 @@ class autocopterDronekit(object):
                     0, 0, 0, point4.lat, point4.lon, 14))
         print " Upload new commands to vehicle"
         cmds.upload()
+    def switch_to_LAND(self, log_and_messages):
+        self.stop_land = False
+        self.vehicle.mode = VehicleMode("LAND")
+        log_and_messages.deb_pr_tel('MODE = LAND')
+        while not self.vehicle.system_status.state != 'STANBY':
+            if not self.stop_land:
+                log_and_messages.deb_pr_tel('Waiting for LAND')
+                time.sleep(1)
+            else:
+                log_and_messages.deb_pr_tel('КРИТИЧЕСКОЕ ЗАВЕРШЕНИЕ! Stopped LAND!!! SWITCH TO IDLE')
+                return 'IDLE'
+        log_and_messages.deb_pr_tel('SUCCESS LAND! SWITCH TO IDLE')
+        return 'IDLE'
+        self.vehicle.armed = False
+        log_and_messages.deb_pr_tel('Disarming...')
+        log_and_messages.deb_pr_tel('IDLE STATE activated!')
     def switch_to_IDLE(self,log_and_messages):
         log_and_messages.deb_pr_tel('Switch to IDLE STATE')
         self.vehicle.mode = VehicleMode("GUIDED")
