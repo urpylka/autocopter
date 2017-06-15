@@ -11,6 +11,11 @@ reload(sys)
 sys.setdefaultencoding('utf8')
 
 #dronekit = autocopterDronekit()  # для доступности в finally (ВРОДЕ КАК НЕ НАДО)
+
+
+#def changeNextState(_nextState):
+#    global nextState
+#    nextState = _nextState
 STATE = 'INIT'
 try:
     while 1:
@@ -37,6 +42,7 @@ try:
                         if content_type == 'text':
                             if msg['text'] == '/start':
                                 if STATE == 'IDLE':
+                                    global nextIdleState
                                     nextIdleState = "TAKEOFF"
                                 # попытка совершения полета в указанную точку в режиме APM AUTO
                                 log_and_messages.deb_pr_tel('try starting mission...')
@@ -74,7 +80,7 @@ try:
                 log_and_messages.deb_pr_tel('Connect successful!\nListening ...')
                     # Keep the program running.
         elif STATE == 'IDLE':
-            nextIdleState = 'IDLE'#'TAKEOFF'
+            nextIdleState = 'IDLE'  # 'TAKEOFF'
             dronekit.switch_to_IDLE(log_and_messages)
             # здесь крутимся за счет следующего цикла
             while STATE == 'IDLE':

@@ -35,10 +35,10 @@ chmod +x /etc/init.d/autocopter
 chown root:root /etc/init.d/autocopter
 update-rc.d autocopter defaults
 
-service autocopter start
 service mavgateway start
 service umtskeeper start
 service rssh start
+service autocopter start
 
 # FOR DEBUG
 #python autocopter/autocopter.py 'TOKEN'
