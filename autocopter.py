@@ -96,7 +96,7 @@ try:
         elif STATE == 'TAKEOFF':
             nextTakeOffState = "GUIDED"
             targetAltitude = 20
-            dronekit.arm_and_takeoff(targetAltitude,log_and_messages)
+            nextTakeOffState = dronekit.arm_and_takeoff(targetAltitude,log_and_messages)
 
             if nextTakeOffState == 'GUIDED':
                 STATE = 'GUIDED'
