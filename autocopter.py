@@ -4,11 +4,13 @@
 from log_and_messages import *
 import sys, telepot, time
 from other_functions import get_ip
+from dronekit_functions import *
 # Устранение проблем с кодировкой UTF-8
 # http://webhamster.ru/mytetrashare/index/mtb0/13566385393amcr1oegx
 reload(sys)
 sys.setdefaultencoding('utf8')
 
+dronekit = None
 STATE = 'INIT'
 try:
     while 1:
@@ -63,7 +65,6 @@ try:
             time.sleep(1.5)  # время на ответ сообщений пришедших в выключенный период
 
             log_and_messages.deb_pr_tel('Connecting to APM ...')
-            from dronekit_functions import *
             dronekit = autocopterDronekit()  # для доступности в finally (ВРОДЕ КАК НЕ НАДО)
             if dronekit.status_of_connect:
                 # global STATE
