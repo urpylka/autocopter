@@ -24,6 +24,7 @@ try:
             bot = telepot.Bot(TOKEN)
             # ==========================================================================================================
             log_and_messages = log_and_messages(bot)
+            bot.sendMessage(62922848, 'msg')
             log_and_messages.deb_pr_tel("Autocopter is online: %s" % get_ip())
 
             def handle(msg):
