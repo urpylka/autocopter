@@ -76,6 +76,8 @@ class autocopterDronekit(object):
               "\nGroundspeed: %s" % self.vehicle.groundspeed + \
               "\nAirspeed: %s" % self.vehicle.airspeed
         return buf
+    def onLand(self):
+        return False
     def distance_to_current_waypoint(self):
         """
         Gets distance in metres to the current waypoint.
@@ -139,6 +141,20 @@ class autocopterDronekit(object):
                     0, 0, 0, point4.lat, point4.lon, 14))
         print " Upload new commands to vehicle"
         cmds.upload()
+    def switch_to_IDLE(self,log_and_messages):
+        log_and_messages.deb_pr_tel('Go to IDLE STATE. Switching MODE = GUIDED, and Disarm')
+        self.vehicle.mode = VehicleMode("GUIDED")
+        self.vehicle.armed = False
+        log_and_messages.deb_pr_tel('Disarming...')
+        log_and_messages.deb_pr_tel('IDLE STATE: MODE = GUIDED, Armed = False')
+    def switch_to_GUIDED(self,log_and_messages):
+        log_and_messages.deb_pr_tel('Go to GUIDED STATE.')
+        self.vehicle.mode = VehicleMode("GUIDED")
+        log_and_messages.deb_pr_tel('GUIDED STATE: MODE = GUIDED')
+    def switch_to_RTL(self,log_and_messages):
+        log_and_messages.deb_pr_tel('Go to RTL STATE.')
+        self.vehicle.mode = VehicleMode("RTL")
+        log_and_messages.deb_pr_tel('RTL STATE: MODE = RTL')
     @property
     def is_armable(self):
         """
@@ -158,32 +174,39 @@ class autocopterDronekit(object):
         self.vehicle.simple_goto(a_location)
         # Путевая скорость, м/с
         self.vehicle.groundspeed = groundspeed
-    def arm_and_takeoff(self, aTargetAltitude):
+    def arm_and_takeoff(self, aTargetAltitude,log_and_messages):
         """
         Arms vehicle and fly to aTargetAltitude.
         """
-        print "Basic pre-arm checks"
+        log_and_messages.deb_pr_tel('Basic pre-arm checks')
         # Don't let the user try to arm until autopilot is ready
         while not self.is_armable: #проверка не дронкита, а собственная
-            print " Waiting for vehicle to initialise..."
+            log_and_messages.deb_pr_tel('Waiting for vehicle to initialise...')
             time.sleep(1)
-        print "Arming motors"
+        log_and_messages.deb_pr_tel('Arming motors')
         # Copter should arm in GUIDED mode
         self.vehicle.mode = VehicleMode("GUIDED")
         self.vehicle.armed = True
 
         while not self.vehicle.armed:
-            print " Waiting for arming..."
+            log_and_messages.deb_pr_tel('Waiting for arming...')
             time.sleep(1)
-
-        print "Taking off!"
+        log_and_messages.deb_pr_tel('Taking off!')
         self.vehicle.simple_takeoff(aTargetAltitude)  # Take off to target altitude
 
         # Wait until the vehicle reaches a safe height before processing the goto (otherwise the command
         #  after Vehicle.simple_takeoff will execute immediately).
         while True:
-            print " Altitude: ", self.vehicle.location.global_relative_frame.alt
+            log_and_messages.deb_pr_tel("Altitude: " % self.vehicle.location.global_relative_frame.alt)
             if self.vehicle.location.global_relative_frame.alt >= aTargetAltitude * 0.95:  # Trigger just below target alt.
-                print "Reached target altitude"
+                log_and_messages.deb_pr_tel("Reached target altitude")
                 break
             time.sleep(1)
+    def motors_off(self):
+        msg = self.vehicle.message_factory.command_long_encode(
+            0, 0,  # target system, target component
+            mavutil.mavlink.MAV_CMD_DO_FLIGHTTERMINATION,  # command
+            0,  # confirmation
+            1,  # Flight termination activated if > 0.5
+            0, 0, 0, 0, 0, 0)
+        self.vehicle.send_mavlink(msg)

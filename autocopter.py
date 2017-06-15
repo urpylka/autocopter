@@ -1,10 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf8 -*-
-DEBUG = True
 
+from log_and_messages import *
+import sys, telepot, time
+from other_functions import get_ip
+from dronekit_functions import *
 # Устранение проблем с кодировкой UTF-8
 # http://webhamster.ru/mytetrashare/index/mtb0/13566385393amcr1oegx
-import sys
 reload(sys)
 sys.setdefaultencoding('utf8')
 
@@ -18,12 +20,11 @@ try:
             wait_internet()
             # ===========================================================================================================
             # START TELEGRAM BOT
-            import sys, telepot
             TOKEN = sys.argv[1]  # get token from command-line
             bot = telepot.Bot(TOKEN)
             # ==========================================================================================================
-            from other_functions import get_ip
-            bot.sendMessage(62922848, "Autocopter is online: %s" % get_ip())
+            log_and_messages = log_and_messages(bot)
+            log_and_messages.deb_pr_tel("Autocopter is online: %s" % get_ip())
 
             def handle(msg):
                 """хендлер выполняется в отдельном потоке, вызывается событием на подобие блокирующей очереди"""
@@ -35,69 +36,120 @@ try:
                         if content_type == 'text':
                             if msg['text'] == '/start':
                                 # попытка совершения полета в указанную точку в режиме APM AUTO
-                                bot.sendMessage(chat_id, 'try starting mission...')
+                                log_and_messages.deb_pr_tel('try starting mission...')
                             elif msg['text'] == '/status':
                                 # вывод информации о коптере, ip, заряд батареи
                                 # bot.sendMessage(chat_id, 'preparing status...')
-                                bot.sendMessage(62922848,
-                                                "copter ip: %s" % get_ip() + '\n' + dronekit.get_status() + '\nSTATE: %s' % STATE)
+                                log_and_messages.deb_pr_tel("copter ip: %s" % get_ip() + '\n' + dronekit.get_status() + '\nSTATE: %s' % STATE)
                             elif msg['text'] == '/stop':
                                 # остановка всех операций в MACHINE STATE и перевод в IDLE
-                                bot.sendMessage(chat_id, 'stop all operations, go to IDLE STATE')
+                                log_and_messages.deb_pr_tel('stop all operations, go to IDLE STATE')
                             elif msg['text'] == '/help':
-                                bot.sendMessage(chat_id,
-                                                'This Bot created for control copter\nА вообще во мне семь всевдопараллельных потоков и меня это устраивает')
+                                log_and_messages.deb_pr_tel('This Bot created for control copter\nА вообще во мне семь всевдопараллельных потоков и меня это устраивает')
                             else:
-                                bot.sendMessage(chat_id, 'Ошибка 4! Некорректная текстовая команда')
+                                log_and_messages.deb_pr_tel('Ошибка 4! Некорректная текстовая команда')
                         elif content_type == 'location':
                             # расчет возможности полета в заданные координаты и построение полетного задания
                             # bot.sendMessage(chat_id, 'preparing mission...')
-                            bot.sendMessage(chat_id,
-                                            str(msg['location']['latitude']) + '\n' + str(msg['location']['longitude']))
+                            log_and_messages.deb_pr_tel(str(msg['location']['latitude']) + '\n' + str(msg['location']['longitude']))
                         else:
-                            bot.sendMessage(chat_id, 'Ошибка 2! Неверный тип: только text и location')
+                            log_and_messages.deb_pr_tel('Ошибка 2! Неверный тип: только text и location')
                     else:
-                        bot.sendMessage(chat_id, 'Ошибка 1! Команда \"' + msg[
-                            'text'] + '\" не может быть выполнена. STATE == INIT')
+                        log_and_messages.deb_pr_tel('Ошибка 1! Команда \"' + msg['text'] + '\" не может быть выполнена. STATE == INIT')
                 else:
-                    bot.sendMessage(chat_id, 'Ошибка 3! Access error!')
+                    log_and_messages.deb_pr_tel('Ошибка 3! Access error!')
             bot.message_loop(handle)
 
-            import time
             time.sleep(1.5)  # время на ответ сообщений пришедших в выключенный период
 
-            if DEBUG:
-                print ('Connecting to APM ...')
-                bot.sendMessage(62922848, 'Connecting to APM ...')
-            from dronekit_functions import *
+            log_and_messages.deb_pr_tel('Connecting to APM ...')
             dronekit = autocopterDronekit()  # для доступности в finally (ВРОДЕ КАК НЕ НАДО)
             if dronekit.status_of_connect:
                 # global STATE
                 STATE = 'IDLE'
-                if DEBUG:
-                    print ('Connect successful!')
-                    bot.sendMessage(62922848, 'Connect successful!')
-                    print ('Listening ...')
-                    bot.sendMessage(62922848, 'Listening ...')
+                log_and_messages.deb_pr_tel('Connect successful!\nListening ...')
                     # Keep the program running.
-            pass
         elif STATE == 'IDLE':
-            pass
+            nextIdleState = 'IDLE'#'TAKEOFF'
+            dronekit.switch_to_IDLE(log_and_messages)
+            # здесь крутимся за счет следующего цикла
+            while STATE == 'IDLE':
+                if nextIdleState != 'IDLE':
+                    if nextIdleState == 'TAKEOFF':
+                        STATE = 'TAKEOFF'
+                        log_and_messages.deb_pr_tel('Switch to TAKEOFF')
+                    else:
+                        nextIdleState = "IDLE"
+                        log_and_messages.deb_pr_tel('Из состояния IDLE можно перейти только в состояние TAKEOFF')
+                time.sleep(1)
         elif STATE == 'TAKEOFF':
-            pass
-        elif STATE == 'LOITER':
-            pass
+            nextTakeOffState = "GUIDED"
+            targetAltitude = 20
+            dronekit.arm_and_takeoff(targetAltitude,log_and_messages)
+
+            if nextTakeOffState == 'GUIDED':
+                STATE = 'GUIDED'
+                log_and_messages.deb_pr_tel('Switch to GUIDED')
+            elif nextTakeOffState == 'AUTO':
+                STATE = 'AUTO'
+                log_and_messages.deb_pr_tel('Switch to AUTO')
+            elif nextTakeOffState == 'GOTO':
+                STATE = 'GOTO'
+                log_and_messages.deb_pr_tel('Switch to GOTO')
+            else:
+                nextTakeOffState = "GUIDED"
+                log_and_messages.deb_pr_tel('Введенное состояние некорректное: Автоматический переход из TAKEOFF в состояние GUIDED (вообще возможны AUTO и GOTO')
+                time.sleep(1)
+        elif STATE == 'GUIDED':
+            nextGuidedState = 'GUIDED'
+            dronekit.switch_to_GUIDED(log_and_messages)
+            # здесь крутимся за счет следующего цикла
+            while STATE == 'GUIDED':
+                if nextGuidedState != 'GUIDED':
+                    if nextGuidedState == 'LAND':
+                        STATE = 'LAND'
+                        log_and_messages.deb_pr_tel('Switch to LAND')
+                    elif nextGuidedState == 'RTL':
+                        STATE = 'RTL'
+                        log_and_messages.deb_pr_tel('Switch to RTL')
+                    elif nextGuidedState == 'AUTO':
+                        STATE = 'AUTO'
+                        log_and_messages.deb_pr_tel('Switch to AUTO')
+                    elif nextGuidedState == 'GOTO':
+                        STATE = 'GOTO'
+                        log_and_messages.deb_pr_tel('Switch to GOTO')
+                    else:
+                        nextGuidedState = "GUIDED"
+                        log_and_messages.deb_pr_tel('Из состояния GUIDED можно перейти только в состояния LAND, RTL, AUTO, GOTO')
+                time.sleep(1)
         elif STATE == 'RTL':
-            pass
+            nextRTLState = 'RTL'
+            dronekit.switch_to_RTL(log_and_messages)
+
+            # как работает функция mode RTL сколько времени??????????
+
+            # здесь крутимся за счет следующего цикла
+            # ручной переход в LAND и IDLE напрямую невозможен
+            while STATE == 'RTL':
+                if nextRTLState != 'RTL':
+                    if nextRTLState == 'GUIDED':
+                        STATE = 'GUIDED'
+                        log_and_messages.deb_pr_tel('Switch to GUIDED')
+                    else:
+                        nextRTLState = "RTL"
+                        log_and_messages.deb_pr_tel('Из состояния RTL можно перейти только в состояния GUIDED')
+                elif dronekit.onLand():
+                    STATE = 'IDLE'
+                    log_and_messages.deb_pr_tel('Закончен режим RTL перевод в IDLE')
+                time.sleep(1)
         elif STATE == 'AUTO':
             pass
         elif STATE == 'LAND':
             pass
-        elif STATE == 'GUIDED':
+        elif STATE == 'GOTO':
             pass
         else:
             pass
-        import time
         time.sleep(1)
 finally:
     dronekit.disconnect

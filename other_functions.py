@@ -1,3 +1,5 @@
+#!/usr/bin/python
+# -*- coding: utf8 -*-
 def check_internet():
     import socket
     try:
