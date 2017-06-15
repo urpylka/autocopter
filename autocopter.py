@@ -24,7 +24,8 @@ try:
             # ==========================================================================================================
             log_and_messages = log_and_messages(bot)
             bot.sendMessage(62922848, 'msg')
-            log_and_messages.deb_pr_tel("Autocopter is online: %s" % get_ip())
+            log_and_messages.deb_pr_tel("Autocopter is online:")
+            #log_and_messages.deb_pr_tel("Autocopter is online: %s" % get_ip())
 
             def handle(msg):
                 """хендлер выполняется в отдельном потоке, вызывается событием на подобие блокирующей очереди"""
