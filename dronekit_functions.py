@@ -197,7 +197,7 @@ class autocopterDronekit(object):
         # Wait until the vehicle reaches a safe height before processing the goto (otherwise the command
         #  after Vehicle.simple_takeoff will execute immediately).
         while True:
-            log_and_messages.deb_pr_tel("Altitude: " % self.vehicle.location.global_relative_frame.alt)
+            log_and_messages.deb_pr_tel("Altitude: %s" % self.vehicle.location.global_relative_frame.alt)
             if self.vehicle.location.global_relative_frame.alt >= aTargetAltitude * 0.95:  # Trigger just below target alt.
                 log_and_messages.deb_pr_tel("Reached target altitude")
                 break
