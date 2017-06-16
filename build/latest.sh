@@ -36,6 +36,8 @@ chmod +x /etc/init.d/autocopter
 chown root:root /etc/init.d/autocopter
 update-rc.d autocopter defaults
 
+cp -f /home/pi/telegrambot.token /home/pi/autocopter/telegrambot.token
+
 sudo service mavgateway restart
 sudo service umtskeeper restart
 sudo service rssh restart

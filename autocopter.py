@@ -23,7 +23,11 @@ try:
                 wait_internet()
                 # ===========================================================================================================
                 # START TELEGRAM BOT
-                TOKEN = sys.argv[1]  # get token from command-line
+                #TOKEN = sys.argv[1]  # get token from command-line
+                pmName = input('Enter module name:')
+                pm = __import__('/home/pi/autocopter/telegrambot.token')
+                print(dir(pm))
+                TOKEN = dir(pm)
                 bot = telepot.Bot(TOKEN)
                 # ==========================================================================================================
                 lam = log_and_messages(bot, MY_CHAT_ID, DEBUG)
