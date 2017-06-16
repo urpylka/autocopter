@@ -48,7 +48,7 @@ class autocopterDronekit(object):
         elif STATE == 'IDLE':
             if command == '/status':
                 # вывод информации о коптере, ip, заряд батареи
-                return "copter ip: " + get_ip() + '\n' + self.get_status() + '\nSTATE: ' + STATE
+                return 'copter ip: ' + get_ip() + '\n' + self.get_status() + '\nSTATE: ' + STATE
             elif command == 'create_mission':
                 self._mission_created = False
                 # exeption https://pythonworld.ru/tipy-dannyx-v-python/isklyucheniya-v-python-konstrukciya-try-except-dlya-obrabotki-isklyuchenij.html
@@ -163,7 +163,7 @@ class autocopterDronekit(object):
                 self._new_state(STATE,'HOVER')
                 return "Зависнуть из состояния: %s" % self._old_state
             else:
-                return 'Ошибка 3! Некорректная команда ' + command + ' для состояния %s' % STATE
+                return 'Ошибка 3! Некорректная команда ' + command + ' для состояния ' + STATE
         elif STATE == 'AUTO':
             if command == '/status':
                 # вывод информации о коптере, ip, заряд батареи
@@ -337,7 +337,7 @@ class autocopterDronekit(object):
         self._vehicle.armed = False
         while True:
             if not self._stop_state:
-                log_and_messages.deb_pr_tel('I\'m in '+self._old_state)
+                #log_and_messages.deb_pr_tel('I\'m in '+self._old_state)
                 time.sleep(1)
             else:
                 log_and_messages.deb_pr_tel(
@@ -364,7 +364,7 @@ class autocopterDronekit(object):
         self._need_hover = True #сброс
         while True:
             if not self._stop_state:
-                log_and_messages.deb_pr_tel('I\'m in '+self._old_state)
+                #log_and_messages.deb_pr_tel('I\'m in '+self._old_state)
                 time.sleep(1)
             else:
                 log_and_messages.deb_pr_tel(
