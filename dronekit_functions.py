@@ -317,7 +317,7 @@ class autocopterDronekit(object):
         cmds.upload()
     @property
     def onLand(self):
-        return self._vehicle.system_status.state == 'STANBY'
+        return self._vehicle.system_status.state == 'STANDBY'
     def LAND(self, log_and_messages):
         self._old_state = 'LAND'
         log_and_messages.deb_pr_tel('STATE = ' + self._old_state)
