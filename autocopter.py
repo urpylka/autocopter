@@ -55,6 +55,7 @@ try:
                     # Keep the program running.
             except Exception as ex:
                 lam.deb_pr_tel('Произошла ошибка:\n' + ex.message + "\n" + traceback.format_exc() + '\nв состоянии ' + STATE + ', переход в состояние ' + nextState)
+                break
             finally:
                 STATE = nextState
         elif STATE == 'IDLE':
