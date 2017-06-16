@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf8 -*-
-
-from lam import *
+from log_and_messages import *
 import sys, telepot, time, traceback
 from dronekit_functions import *
 # ====================================================================================
@@ -27,7 +26,6 @@ try:
                 TOKEN = sys.argv[1]  # get token from command-line
                 bot = telepot.Bot(TOKEN)
                 # ==========================================================================================================
-                from log_and_messages import *
                 lam = log_and_messages(bot, MY_CHAT_ID, DEBUG)
                 lam.deb_pr_tel("Autocopter is online: %s" % get_ip())
 
