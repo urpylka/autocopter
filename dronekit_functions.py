@@ -354,9 +354,9 @@ class autocopterDronekit(object):
         log_and_messages.deb_pr_tel(
             'Успешное завершение состояния ' + self._old_state + ' переключение в состояние ' + self._next_state)
         return self._next_state
-    def _simple_goto_wrapper(self,lat,lot,alt=20,groundspeed=7.5):
+    def _simple_goto_wrapper(self,lat,lon,alt=20,groundspeed=7.5):
         # Задаем координаты нужной точки
-        a_location = LocationGlobalRelative(lat,lot,alt)
+        a_location = LocationGlobalRelative(lat,lon,alt)
         # полетели
         self._vehicle.simple_goto(a_location)
         # Путевая скорость, м/с
@@ -368,7 +368,7 @@ class autocopterDronekit(object):
         self._next_state = 'HOVER'
         self._vehicle.mode = VehicleMode("GUIDED")
         if self._need_hover:
-            self._simple_goto_wrapper(self._vehicle.location.global_relative_frame.lat,self._vehicle.location.global_relative_frame.lot,self._vehicle.location.global_relative_frame.alt)
+            self._simple_goto_wrapper(self._vehicle.location.global_relative_frame.lat,self._vehicle.location.global_relative_frame.lon,self._vehicle.location.global_relative_frame.alt)
         self._need_hover = True #сброс
         while True:
             if not self._stop_state:
@@ -487,8 +487,8 @@ class autocopterDronekit(object):
             self._stop_state = False
             self._next_state = 'HOVER'
             self._vehicle.mode = VehicleMode("GUIDED")
-            self._simple_goto_wrapper(self._goto_location['lat'],self._goto_location['lot'],self._goto_location['alt'])
-            while self._is_arrived(self._goto_location['lat'],self._goto_location['lot'],self._goto_location['alt']):
+            self._simple_goto_wrapper(self._goto_location['lat'],self._goto_location['lon'],self._goto_location['alt'])
+            while self._is_arrived(self._goto_location['lat'],self._goto_location['lon'],self._goto_location['alt']):
                 if not self._stop_state:
                     log_and_messages.deb_pr_tel('I\'m in '+self._old_state)
                     log_and_messages.deb_pr_tel('До точки назначения: ' + get_distance_metres(self._goto_location, self._vehicle.location.global_frame) + "м")
