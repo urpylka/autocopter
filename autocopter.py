@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf8 -*-
 from log_and_messages import *
-import sys, telepot, time, traceback, file
+import sys, telepot, time, traceback
 from dronekit_functions import *
 # ====================================================================================
 # Устранение проблем с кодировкой UTF-8
