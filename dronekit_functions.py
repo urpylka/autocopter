@@ -2,8 +2,7 @@
 # -*- coding: utf8 -*-
 # Import DroneKit-Python
 from dronekit import VehicleMode, LocationGlobalRelative, LocationGlobal, Command, connect
-import time
-import math
+import time, traceback, math
 from pymavlink import mavutil
 from other_functions import get_ip
 def get_location_metres(original_location, dNorth, dEast):
@@ -49,7 +48,7 @@ class autocopterDronekit(object):
         elif STATE == 'IDLE':
             if command == '/status':
                 # вывод информации о коптере, ip, заряд батареи
-                return "copter ip: %s" % get_ip() + '\n' + self.get_status() + '\nSTATE: %s' % STATE
+                return "copter ip: " + get_ip() + '\n' + self.get_status() + '\nSTATE: ' + STATE
             elif command == 'create_mission':
                 self._mission_created = False
                 # exeption https://pythonworld.ru/tipy-dannyx-v-python/isklyucheniya-v-python-konstrukciya-try-except-dlya-obrabotki-isklyuchenij.html
@@ -59,9 +58,9 @@ class autocopterDronekit(object):
                     self.adds_square_mission(self._vehicle.location.global_frame, 20)
                     self._mission_created = True
                     return "Миссия успешно построена!"
-                except BaseException:
+                except Exception as ex:
                     self._mission_created = False
-                    return "Произошла ошибка при построении миссии" + BaseException.message
+                    return "Произошла ошибка при построении миссии:\n" + ex.message + "\n" + traceback.format_exc()
                 finally:
                     pass
             elif command == '/takeoff':
@@ -72,7 +71,7 @@ class autocopterDronekit(object):
         elif STATE == 'TAKEOFF':
             if command == '/status':
                 # вывод информации о коптере, ip, заряд батареи
-                return "copter ip: %s" % get_ip() + '\n' + self.get_status() + '\nSTATE: %s' % STATE
+                return "copter ip: " + get_ip() + '\n' + self.get_status() + '\nSTATE: ' + STATE
             elif command == 'create_mission':
                 self._mission_created = False
                 # exeption https://pythonworld.ru/tipy-dannyx-v-python/isklyucheniya-v-python-konstrukciya-try-except-dlya-obrabotki-isklyuchenij.html
@@ -98,7 +97,7 @@ class autocopterDronekit(object):
         elif STATE == 'HOVER':
             if command == '/status':
                 # вывод информации о коптере, ip, заряд батареи
-                return "copter ip: %s" % get_ip() + '\n' + self.get_status() + '\nSTATE: %s' % STATE
+                return "copter ip: " + get_ip() + '\n' + self.get_status() + '\nSTATE: ' + STATE
             elif command == 'create_mission':
                 self._mission_created = False
                 # exeption https://pythonworld.ru/tipy-dannyx-v-python/isklyucheniya-v-python-konstrukciya-try-except-dlya-obrabotki-isklyuchenij.html
@@ -130,7 +129,7 @@ class autocopterDronekit(object):
         elif STATE == 'GOTO':
             if command == '/status':
                 # вывод информации о коптере, ip, заряд батареи
-                return "copter ip: %s" % get_ip() + '\n' + self.get_status() + '\nSTATE: %s' % STATE
+                return "copter ip: " + get_ip() + '\n' + self.get_status() + '\nSTATE: ' + STATE
             elif command == '/land':
                 self._new_state(STATE,'LAND')
                 return "Посадка из состояния: %s" % self._old_state
@@ -145,7 +144,7 @@ class autocopterDronekit(object):
         elif STATE == 'LAND':
             if command == '/status':
                 # вывод информации о коптере, ip, заряд батареи
-                return "copter ip: %s" % get_ip() + '\n' + self.get_status() + '\nSTATE: %s' % STATE
+                return "copter ip: " + get_ip() + '\n' + self.get_status() + '\nSTATE: ' + STATE
             elif command == 'create_mission':
                 self._mission_created = False
                 # exeption https://pythonworld.ru/tipy-dannyx-v-python/isklyucheniya-v-python-konstrukciya-try-except-dlya-obrabotki-isklyuchenij.html
@@ -168,7 +167,7 @@ class autocopterDronekit(object):
         elif STATE == 'AUTO':
             if command == '/status':
                 # вывод информации о коптере, ip, заряд батареи
-                return "copter ip: %s" % get_ip() + '\n' + self.get_status() + '\nSTATE: %s' % STATE + '\nРасстояние до следующего WP: %s' % self.distance_to_current_waypoint() + "м"
+                return "copter ip: " + get_ip() + '\n' + self.get_status() + '\nSTATE: ' + STATE + '\nРасстояние до следующего WP: ' + self.distance_to_current_waypoint() + "м"
             elif command == '/land':
                 self._new_state(STATE,'LAND')
                 return "Посадка из состояния: %s" % self._old_state
@@ -179,11 +178,11 @@ class autocopterDronekit(object):
                 self._new_state(STATE,'HOVER')
                 return "Зависнуть из состояния: %s" % self._old_state
             else:
-                return 'Ошибка 3! Некорректная команда ' + command + ' для состояния %s' % STATE
+                return 'Ошибка 3! Некорректная команда ' + command + ' для состояния ' + STATE
         elif STATE == 'RTL':
             if command == '/status':
                 # вывод информации о коптере, ip, заряд батареи
-                return "copter ip: %s" % get_ip() + '\n' + self.get_status() + '\nSTATE: %s' % STATE
+                return "copter ip: " + get_ip() + '\n' + self.get_status() + '\nSTATE: ' + STATE
             elif command == '/land':
                 self._new_state(STATE,'LAND')
                 return "Посадка из состояния: %s" % self._old_state
@@ -191,9 +190,9 @@ class autocopterDronekit(object):
                 self._new_state(STATE,'HOVER')
                 return "Зависнуть из состояния: %s" % self._old_state
             else:
-                return 'Ошибка 3! Некорректная команда ' + command + ' для состояния %s' % STATE
+                return 'Ошибка 3! Некорректная команда ' + command + ' для состояния ' + STATE
         else:
-            return 'Ошибка 4! Некорректное состояние %s' % STATE
+            return 'Ошибка 4! Некорректное состояние ' + STATE
     def __init__(self,status_printer):
         # ==============================================================
         # построение миссии

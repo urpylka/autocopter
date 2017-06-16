@@ -61,8 +61,8 @@ try:
             nextState = 'IDLE'
             try:
                 nextState = dronekit.IDLE(lam)
-            except BaseException:
-                lam.deb_pr_tel('Произошла ошибка:\n' + BaseException.message + '\nв состоянии ' + STATE + ', переход в состояние ' + nextState)
+            except Exception as ex:
+                lam.deb_pr_tel('Произошла ошибка:\n' + ex.message + '\nв состоянии ' + STATE + ', переход в состояние ' + nextState)
             finally:
                 STATE = nextState
         elif STATE == 'TAKEOFF':
@@ -78,45 +78,45 @@ try:
             nextState = 'GUIDED'
             try:
                 nextState = dronekit.GUIDED(lam)
-            except BaseException:
+            except Exception as ex:
                 lam.deb_pr_tel(
-                    'Произошла ошибка:\n' + BaseException.message + '\nв состоянии ' + STATE + ', переход в состояние ' + nextState)
+                    'Произошла ошибка:\n' + ex.message + '\nв состоянии ' + STATE + ', переход в состояние ' + nextState)
             finally:
                 STATE = nextState
         elif STATE == 'RTL':
             nextState = 'RTL'
             try:
                 nextState = dronekit.RTL(lam)
-            except BaseException:
+            except Exception as ex:
                 lam.deb_pr_tel(
-                    'Произошла ошибка:\n' + BaseException.message + '\nв состоянии ' + STATE + ', переход в состояние ' + nextState)
+                    'Произошла ошибка:\n' + ex.message + '\nв состоянии ' + STATE + ', переход в состояние ' + nextState)
             finally:
                 STATE = nextState
         elif STATE == 'AUTO':
             nextState = 'AUTO'
             try:
                 nextState = dronekit.AUTO(lam)
-            except BaseException:
+            except Exception as ex:
                 lam.deb_pr_tel(
-                    'Произошла ошибка:\n' + BaseException.message + '\nв состоянии ' + STATE + ', переход в состояние ' + nextState)
+                    'Произошла ошибка:\n' + ex.message + '\nв состоянии ' + STATE + ', переход в состояние ' + nextState)
             finally:
                 STATE = nextState
         elif STATE == 'LAND':
             nextState = 'LAND'
             try:
                 nextState = dronekit.LAND(lam)
-            except BaseException:
+            except Exception as ex:
                 lam.deb_pr_tel(
-                    'Произошла ошибка:\n' + BaseException.message + '\nв состоянии ' + STATE + ', переход в состояние ' + nextState)
+                    'Произошла ошибка:\n' + ex.message + '\nв состоянии ' + STATE + ', переход в состояние ' + nextState)
             finally:
                 STATE = nextState
         elif STATE == 'GOTO':
             nextState = 'GOTO'
             try:
                 nextState = dronekit.GOTO(lam)
-            except BaseException:
+            except Exception as ex:
                 lam.deb_pr_tel(
-                    'Произошла ошибка:\n' + BaseException.message + '\nв состоянии ' + STATE + ', переход в состояние ' + nextState)
+                    'Произошла ошибка:\n' + ex.message + '\nв состоянии ' + STATE + ', переход в состояние ' + nextState)
             finally:
                 STATE = nextState
         else:
