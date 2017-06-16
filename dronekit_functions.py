@@ -5,6 +5,7 @@ from dronekit import VehicleMode, LocationGlobalRelative, LocationGlobal, Comman
 import time
 import math
 from pymavlink import mavutil
+from other_functions import get_ip
 def get_location_metres(original_location, dNorth, dEast):
     """
     Returns a LocationGlobal object containing the latitude/longitude `dNorth` and `dEast` metres from the
@@ -37,23 +38,194 @@ def get_distance_metres(aLocation1, aLocation2):
     dlat = aLocation2.lat - aLocation1.lat
     dlong = aLocation2.lon - aLocation1.lon
     return math.sqrt((dlat * dlat) + (dlong * dlong)) * 1.113195e5
-def status_printer(txt):
-    print('status urpylka')
-    print(txt)
+#def status_printer(txt):
+#    print('status urpylka')
+#    print(txt)
 class autocopterDronekit(object):
-    def __init__(self):
-        self.vehicle = None
+    def _new_state(self,CURRENT_STATE,NEW_STATE):
+        self._stop_state = True
+        self._old_state = CURRENT_STATE
+        self._next_state = NEW_STATE
+    def new_command(self,STATE,command,params=None):
+        if STATE == 'INIT':
+            return 'Ошибка 3! Некорректная команда ' + command + ' для состояния %s' % STATE
+        elif STATE == 'IDLE':
+            if command == '/status':
+                # вывод информации о коптере, ip, заряд батареи
+                return "copter ip: %s" % get_ip() + '\n' + self.get_status() + '\nSTATE: %s' % STATE
+            elif command == 'create_mission':
+                self._mission_created = False
+                # exeption https://pythonworld.ru/tipy-dannyx-v-python/isklyucheniya-v-python-konstrukciya-try-except-dlya-obrabotki-isklyuchenij.html
+                try:
+                    self._goto_location = LocationGlobalRelative(params['latitude'],params['longitude'],70)
+                    #print 'Create a new mission (for current location)'
+                    self.adds_square_mission(self.vehicle.location.global_frame, 20)
+                    self._mission_created = True
+                    return "Миссия успешно построена!"
+                except BaseException:
+                    self._mission_created = False
+                    return "Произошла ошибка при построении миссии" + BaseException.message
+                finally:
+                    pass
+            elif command == '/takeoff':
+                self._new_state(STATE,'TAKEOFF')
+                return "Взлет из состояния: %s" % self._old_state
+            else:
+                return 'Ошибка 3! Некорректная команда ' + command + ' для состояния %s' % STATE
+        elif STATE == 'TAKEOFF':
+            if command == '/status':
+                # вывод информации о коптере, ip, заряд батареи
+                return "copter ip: %s" % get_ip() + '\n' + self.get_status() + '\nSTATE: %s' % STATE
+            elif command == 'create_mission':
+                self._mission_created = False
+                # exeption https://pythonworld.ru/tipy-dannyx-v-python/isklyucheniya-v-python-konstrukciya-try-except-dlya-obrabotki-isklyuchenij.html
+                try:
+                    self._goto_location = LocationGlobalRelative(params['latitude'],params['longitude'],70)
+                    #print 'Create a new mission (for current location)'
+                    self.adds_square_mission(self.vehicle.location.global_frame, 20)
+                    self._mission_created = True
+                    return "Миссия успешно построена!"
+                except BaseException:
+                    self._mission_created = False
+                    return "Произошла ошибка при построении миссии" + BaseException.message
+                finally:
+                    pass
+            elif command == '/land':
+                self._new_state(STATE,'LAND')
+                return "Посадка из состояния: %s" % self._old_state
+            elif command == '/hover':
+                self._new_state(STATE,'HOVER')
+                return "Зависнуть из состояния: %s" % self._old_state
+            else:
+                return 'Ошибка 3! Некорректная команда ' + command + ' для состояния %s' % STATE
+        elif STATE == 'HOVER':
+            if command == '/status':
+                # вывод информации о коптере, ip, заряд батареи
+                return "copter ip: %s" % get_ip() + '\n' + self.get_status() + '\nSTATE: %s' % STATE
+            elif command == 'create_mission':
+                self._mission_created = False
+                # exeption https://pythonworld.ru/tipy-dannyx-v-python/isklyucheniya-v-python-konstrukciya-try-except-dlya-obrabotki-isklyuchenij.html
+                try:
+                    self._goto_location = LocationGlobalRelative(params['latitude'],params['longitude'],70)
+                    #print 'Create a new mission (for current location)'
+                    self.adds_square_mission(self.vehicle.location.global_frame, 20)
+                    self._mission_created = True
+                    return "Миссия успешно построена!"
+                except BaseException:
+                    self._mission_created = False
+                    return "Произошла ошибка при построении миссии" + BaseException.message
+                finally:
+                    pass
+            elif command == '/land':
+                self._new_state(STATE,'LAND')
+                return "Посадка из состояния: %s" % self._old_state
+            elif command == '/rtl':
+                self._new_state(STATE,'RTL')
+                return "Возврат на точку взлета из состояния: %s" % self._old_state
+            elif command == '/auto':
+                self._new_state(STATE,'AUTO')
+                return "Автопилот из состояния: %s" % self._old_state
+            elif command == '/goto':
+                self._new_state(STATE,'GOTO')
+                return "Полет по координатам из состояния: %s" % self._old_state
+            else:
+                return 'Ошибка 3! Некорректная команда ' + command + ' для состояния %s' % STATE
+        elif STATE == 'GOTO':
+            if command == '/status':
+                # вывод информации о коптере, ip, заряд батареи
+                return "copter ip: %s" % get_ip() + '\n' + self.get_status() + '\nSTATE: %s' % STATE
+            elif command == '/land':
+                self._new_state(STATE,'LAND')
+                return "Посадка из состояния: %s" % self._old_state
+            elif command == '/rtl':
+                self._new_state(STATE,'RTL')
+                return "Возврат на точку взлета из состояния: %s" % self._old_state
+            elif command == '/hover':
+                self._new_state(STATE,'HOVER')
+                return "Зависнуть из состояния: %s" % self._old_state
+            else:
+                return 'Ошибка 3! Некорректная команда ' + command + ' для состояния %s' % STATE
+        elif STATE == 'LAND':
+            if command == '/status':
+                # вывод информации о коптере, ip, заряд батареи
+                return "copter ip: %s" % get_ip() + '\n' + self.get_status() + '\nSTATE: %s' % STATE
+            elif command == 'create_mission':
+                self._mission_created = False
+                # exeption https://pythonworld.ru/tipy-dannyx-v-python/isklyucheniya-v-python-konstrukciya-try-except-dlya-obrabotki-isklyuchenij.html
+                try:
+                    self._goto_location = LocationGlobalRelative(params['latitude'],params['longitude'],70)
+                    #print 'Create a new mission (for current location)'
+                    self.adds_square_mission(self.vehicle.location.global_frame, 20)
+                    self._mission_created = True
+                    return "Миссия успешно построена!"
+                except BaseException:
+                    self._mission_created = False
+                    return "Произошла ошибка при построении миссии" + BaseException.message
+                finally:
+                    pass
+            elif command == '/hover':
+                self._new_state(STATE,'HOVER')
+                return "Зависнуть из состояния: %s" % self._old_state
+            else:
+                return 'Ошибка 3! Некорректная команда ' + command + ' для состояния %s' % STATE
+        elif STATE == 'AUTO':
+            if command == '/status':
+                # вывод информации о коптере, ip, заряд батареи
+                return "copter ip: %s" % get_ip() + '\n' + self.get_status() + '\nSTATE: %s' % STATE + '\nРасстояние до следующего WP: %s' % self.distance_to_current_waypoint() + "м"
+            elif command == '/land':
+                self._new_state(STATE,'LAND')
+                return "Посадка из состояния: %s" % self._old_state
+            elif command == '/rtl':
+                self._new_state(STATE,'RTL')
+                return "Возврат на точку взлета из состояния: %s" % self._old_state
+            elif command == '/hover':
+                self._new_state(STATE,'HOVER')
+                return "Зависнуть из состояния: %s" % self._old_state
+            else:
+                return 'Ошибка 3! Некорректная команда ' + command + ' для состояния %s' % STATE
+        elif STATE == 'RTL':
+            if command == '/status':
+                # вывод информации о коптере, ip, заряд батареи
+                return "copter ip: %s" % get_ip() + '\n' + self.get_status() + '\nSTATE: %s' % STATE
+            elif command == '/land':
+                self._new_state(STATE,'LAND')
+                return "Посадка из состояния: %s" % self._old_state
+            elif command == '/hover':
+                self._new_state(STATE,'HOVER')
+                return "Зависнуть из состояния: %s" % self._old_state
+            else:
+                return 'Ошибка 3! Некорректная команда ' + command + ' для состояния %s' % STATE
+        else:
+            return 'Ошибка 4! Некорректное состояние %s' % STATE
+    def __init__(self,status_printer):
+        # ==============================================================
+        # построение миссии
+        self._mission_created = False
+        self._goto_location = None
+        # необходимость в HOVER
+        self._need_hover = True
+        # ==============================================================
         # Connect to the Vehicle (in this case a UDP endpoint)
         #проверка на подключается или нет
         #цикл пока не подключится?
         #http://python.dronekit.io/automodule.html#dronekit.connect
+        # функция долгая (пишет через функцию status_printer)
+        self.vehicle = None
         self.vehicle = connect('tcp:127.0.0.1:14600', wait_ready=True,status_printer=status_printer)
-        self.stop_takeoff = False
-        self.stop_land = False
+        # ==============================================================
+        self._old_state = 'INIT'
+        self._stop_state = False
+        self._next_state = 'IDLE'
+        # ==============================================================
+    @property
     def status(self):
         return self.status
+    @property
     def status_of_connect(self):
-        return True
+        if self.vihicle != None:
+            return True
+        else:
+            raise Exception("Не удалось подключиться к APM")
     def disconnect(self):
         '''
         Close vehicle object before exiting script
@@ -61,13 +233,14 @@ class autocopterDronekit(object):
         '''
         if self.vehicle != None:
             self.vehicle.close()
+    @property
     def get_status(self):
         # Get some vehicle attributes (state)
         buf = "Get some vehicle attribute values:" + \
               "\nGPS: %s" % self.vehicle.gps_0 + \
               "\nBattery: %s" % self.vehicle.battery + \
               "\nLast Heartbeat: %s" % self.vehicle.last_heartbeat + \
-              "\nIs Armable?: %s" % self.is_armable + \
+              "\nIs Armable?: %s" % self._is_armable + \
               "\nSystem status: %s" % self.vehicle.system_status.state + \
               "\nMode: %s" % self.vehicle.mode.name + \
               "\nGlobal Location: %s" % self.vehicle.location.global_frame + \
@@ -77,8 +250,7 @@ class autocopterDronekit(object):
               "\nGroundspeed: %s" % self.vehicle.groundspeed + \
               "\nAirspeed: %s" % self.vehicle.airspeed
         return buf
-    def onLand(self):
-        return False
+    @property
     def distance_to_current_waypoint(self):
         """
         Gets distance in metres to the current waypoint.
@@ -110,9 +282,9 @@ class autocopterDronekit(object):
         (you must have called download at least once in the session and after clearing the mission)
         """
         cmds = self.vehicle.commands
-        print " Clear any existing commands"
+        print "Clear any existing commands"
         cmds.clear()
-        print " Define/add new commands."
+        print "Define/add new commands."
         # Add new commands. The meaning/order of the parameters is documented in the Command class.
 
         # Add MAV_CMD_NAV_TAKEOFF command. This is ignored if the vehicle is already in the air.
@@ -140,41 +312,94 @@ class autocopterDronekit(object):
         cmds.add(
             Command(0, 0, 0, mavutil.mavlink.MAV_FRAME_GLOBAL_RELATIVE_ALT, mavutil.mavlink.MAV_CMD_NAV_WAYPOINT, 0, 0, 0,
                     0, 0, 0, point4.lat, point4.lon, 14))
-        print " Upload new commands to vehicle"
+        print "Upload new commands to vehicle"
         cmds.upload()
-    def switch_to_LAND(self, log_and_messages):
-        self.stop_land = False
+    @property
+    def onLand(self):
+        return self.vehicle.system_status.state == 'STANBY'
+    def LAND(self, log_and_messages):
+        self._old_state = 'LAND'
+        log_and_messages.deb_pr_tel('STATE = ' + self._old_state)
+        self._stop_state = False
+        self._next_state = 'IDLE'
+        # http://ardupilot.org/copter/docs/land-mode.html
         self.vehicle.mode = VehicleMode("LAND")
-        log_and_messages.deb_pr_tel('MODE = LAND')
-        while not self.vehicle.system_status.state != 'STANBY':
-            if not self.stop_land:
-                log_and_messages.deb_pr_tel('Waiting for LAND')
+        while not self.onLand:
+            if not self._stop_state:
+                log_and_messages.deb_pr_tel('Waiting for ' + self._old_state)
                 time.sleep(1)
             else:
-                log_and_messages.deb_pr_tel('КРИТИЧЕСКОЕ ЗАВЕРШЕНИЕ! Stopped LAND!!! SWITCH TO IDLE')
-                return 'IDLE'
-        log_and_messages.deb_pr_tel('SUCCESS LAND! SWITCH TO IDLE')
-        return 'IDLE'
-        self.vehicle.armed = False
-        log_and_messages.deb_pr_tel('Disarming...')
-        log_and_messages.deb_pr_tel('IDLE STATE activated!')
-    def switch_to_IDLE(self,log_and_messages):
-        log_and_messages.deb_pr_tel('Switch to IDLE STATE')
+                log_and_messages.deb_pr_tel('Прерывание состояния ' + self._old_state + ' переключение в состояние ' + self._next_state)
+                return self._next_state
+        log_and_messages.deb_pr_tel('Успешное завершение состояния ' + self._old_state + ' переключение в состояние ' + self._next_state)
+        return self._next_state
+    def IDLE(self,log_and_messages):
+        self._old_state = 'IDLE'
+        log_and_messages.deb_pr_tel('STATE = ' + self._old_state)
+        self._stop_state = False
+        self._next_state = 'IDLE'
+        # http://ardupilot.org/copter/docs/ac2_guidedmode.html
+        # http://python.dronekit.io/examples/guided-set-speed-yaw-demo.html
         self.vehicle.mode = VehicleMode("GUIDED")
-        log_and_messages.deb_pr_tel('MODE = GUIDED')
         self.vehicle.armed = False
-        log_and_messages.deb_pr_tel('Disarming...')
-        log_and_messages.deb_pr_tel('IDLE STATE activated!')
-    def switch_to_GUIDED(self,log_and_messages):
-        log_and_messages.deb_pr_tel('Go to GUIDED STATE.')
+        while True:
+            if not self._stop_state:
+                log_and_messages.deb_pr_tel('I\'m in '+self._old_state)
+                time.sleep(1)
+            else:
+                log_and_messages.deb_pr_tel(
+                    'Прерывание состояния ' + self._old_state + ' переключение в состояние ' + self._next_state)
+                return self._next_state
+        log_and_messages.deb_pr_tel(
+            'Успешное завершение состояния ' + self._old_state + ' переключение в состояние ' + self._next_state)
+        return self._next_state
+    def _simple_goto_wrapper(self,lat,lot,alt=20,groundspeed=7.5):
+        # Задаем координаты нужной точки
+        a_location = LocationGlobalRelative(lat,lot,alt)
+        # полетели
+        self.vehicle.simple_goto(a_location)
+        # Путевая скорость, м/с
+        self.vehicle.groundspeed = groundspeed
+    def HOVER(self,log_and_messages):
+        self._old_state = 'HOVER'
+        log_and_messages.deb_pr_tel('STATE = ' + self._old_state)
+        self._stop_state = False
+        self._next_state = 'HOVER'
         self.vehicle.mode = VehicleMode("GUIDED")
-        log_and_messages.deb_pr_tel('GUIDED STATE: MODE = GUIDED')
-    def switch_to_RTL(self,log_and_messages):
-        log_and_messages.deb_pr_tel('Go to RTL STATE.')
+        if self._need_hover:
+            self._simple_goto_wrapper(self.vehicle.location.global_frame)
+        self._need_hover = True #сброс
+        while True:
+            if not self._stop_state:
+                log_and_messages.deb_pr_tel('I\'m in '+self._old_state)
+                time.sleep(1)
+            else:
+                log_and_messages.deb_pr_tel(
+                    'Прерывание состояния ' + self._old_state + ' переключение в состояние ' + self._next_state)
+                return self._next_state
+        log_and_messages.deb_pr_tel(
+            'Успешное завершение состояния ' + self._old_state + ' переключение в состояние ' + self._next_state)
+        return self._next_state
+    def RTL(self,log_and_messages):
+        self._old_state = 'RTL'
+        log_and_messages.deb_pr_tel('STATE = ' + self._old_state)
+        self._stop_state = False
+        self._next_state = 'IDLE'
+        # http://ardupilot.org/copter/docs/rtl-mode.html
         self.vehicle.mode = VehicleMode("RTL")
-        log_and_messages.deb_pr_tel('RTL STATE: MODE = RTL')
+        while not self.onLand:
+            if not self._stop_state:
+                log_and_messages.deb_pr_tel('Waiting for ' + self._old_state)
+                time.sleep(1)
+            else:
+                log_and_messages.deb_pr_tel(
+                    'Прерывание состояния ' + self._old_state + ' переключение в состояние ' + self._next_state)
+                return self._next_state
+        log_and_messages.deb_pr_tel(
+            'Успешное завершение состояния ' + self._old_state + ' переключение в состояние ' + self._next_state)
+        return self._next_state
     @property
-    def is_armable(self):
+    def _is_armable(self):
         """
         Returns `True` if the vehicle is ready to arm, false otherwise (``Boolean``).
 
@@ -185,62 +410,139 @@ class autocopterDronekit(object):
         # check that we have a GPS fix
         # check that EKF pre-arm is complete
         return self.vehicle.mode != 'INITIALISING' and self.vehicle.gps_0.fix_type > 1# and self.vehicle._ekf_predposhorizabs #отключена проверка ekf
-    def simple_goto_wrapper(self,lat,lot,alt=20,groundspeed=7.5):
-        # Задаем координаты нужной точки
-        a_location = LocationGlobalRelative(lat,lot,alt)
-        # полетели
-        self.vehicle.simple_goto(a_location)
-        # Путевая скорость, м/с
-        self.vehicle.groundspeed = groundspeed
-    def arm_and_takeoff(self, aTargetAltitude,log_and_messages):
+    def TAKEOFF(self, log_and_messages, aTargetAltitude=70):
+        self._old_state = 'TAKEOFF'
+        log_and_messages.deb_pr_tel('STATE = ' + self._old_state)
+        self._stop_state = False
+        self._next_state = 'HOVER'
         """
         Arms vehicle and fly to aTargetAltitude.
         """
-        self.stop_takeoff = False
         log_and_messages.deb_pr_tel('Basic pre-arm checks')
         # Don't let the user try to arm until autopilot is ready
-        while not self.is_armable: #проверка не дронкита, а собственная
-            if not self.stop_takeoff:
+        while not self._is_armable: #проверка не дронкита, а собственная
+            if not self._stop_state:
+                log_and_messages.deb_pr_tel('Waiting for ' + self._old_state)
                 log_and_messages.deb_pr_tel('Waiting for vehicle to initialise...')
                 time.sleep(1)
             else:
+                log_and_messages.deb_pr_tel(
+                    'Прерывание состояния ' + self._old_state + ' переключение в состояние ' + self._next_state)
                 log_and_messages.deb_pr_tel('Stopping takeoff on pre-arm!')
-                self.motors_off()
-                return 'IDLE'
+                return self._next_state
         # Copter should arm in GUIDED mode
         self.vehicle.mode = VehicleMode("GUIDED")
-
         log_and_messages.deb_pr_tel('Arming motors')
         self.vehicle.armed = True
-
         while not self.vehicle.armed:
-            if not self.stop_takeoff:
+            if not self._stop_state:
+                log_and_messages.deb_pr_tel('Waiting for ' + self._old_state)
                 log_and_messages.deb_pr_tel('Waiting for arming...')
                 time.sleep(1)
             else:
+                log_and_messages.deb_pr_tel(
+                    'Прерывание состояния ' + self._old_state + ' переключение в состояние ' + self._next_state)
                 log_and_messages.deb_pr_tel('Stopping takeoff on arm!')
-                self.motors_off()
-                return 'IDLE'
+                return self._next_state
         log_and_messages.deb_pr_tel('Taking off!')
         self.vehicle.simple_takeoff(aTargetAltitude)  # Take off to target altitude
-
         # Wait until the vehicle reaches a safe height before processing the goto (otherwise the command
         #  after Vehicle.simple_takeoff will execute immediately).
-        while True:
-            if not self.stop_takeoff:
+        while self.vehicle.location.global_relative_frame.alt < aTargetAltitude * 0.95: # Trigger just below target alt.
+            if not self._stop_state:
+                log_and_messages.deb_pr_tel('Waiting for ' + self._old_state)
                 log_and_messages.deb_pr_tel("Altitude: %s" % self.vehicle.location.global_relative_frame.alt)
-                if self.vehicle.location.global_relative_frame.alt >= aTargetAltitude * 0.95:  # Trigger just below target alt.
-                    log_and_messages.deb_pr_tel("Reached target altitude")
-                    break
                 time.sleep(1)
             else:
-                self.vehicle.armed = False
-                log_and_messages.deb_pr_tel('Stopping takeoff on fly!')
-                self.motors_off()
-                #self.vehicle.attitude
-                return 'IDLE'
-        return 'GUIDED'
+                log_and_messages.deb_pr_tel(
+                    'Прерывание состояния ' + self._old_state + ' переключение в состояние ' + self._next_state)
+                log_and_messages.deb_pr_tel('Stopping takeoff on arm!')
+                return self._next_state
+        log_and_messages.deb_pr_tel(
+            'Успешное завершение состояния ' + self._old_state + ' переключение в состояние ' + self._next_state)
+        self._need_hover = False
+        return self._next_state
+    def _is_arrived(self, lat, lon, alt, precision=0.3):
+        # функция взята из https://habrahabr.ru/post/281591/
+        # текущая позиция
+        veh_loc = self.vehicle.location.global_relative_frame
+        # получаем данные в метрах
+        diff_lat_m = (lat - veh_loc.lat) * 1.113195e5
+        diff_lon_m = (lon - veh_loc.lon) * 1.113195e5
+        diff_alt_m = alt - veh_loc.alt
+        # отклонение
+        dist_xyz = math.sqrt(diff_lat_m ** 2 + diff_lon_m ** 2 + diff_alt_m ** 2)
+        if dist_xyz < precision:
+            #print "Прибыли на место"
+            return True
+        else:
+            #print "Еще не долетели"
+            return False
+    def GOTO(self,log_and_messages):
+        self._next_state = self._old_state # должен быть только HOVER
+        if self._mission_created:
+            self._old_state = 'GOTO'
+            log_and_messages.deb_pr_tel('STATE = ' + self._old_state)
+            self._stop_state = False
+            self._next_state = 'HOVER'
+            self.vehicle.mode = VehicleMode("GUIDED")
+            self._simple_goto_wrapper(self._goto_location['lat'],self._goto_location['lot'],self._goto_location['alt'])
+            while self._is_arrived(self._goto_location['lat'],self._goto_location['lot'],self._goto_location['alt']):
+                if not self._stop_state:
+                    log_and_messages.deb_pr_tel('I\'m in '+self._old_state)
+                    log_and_messages.deb_pr_tel('До точки назначения: ' + get_distance_metres(self._goto_location,self.vehicle.location.global_frame) + "м")
+                    time.sleep(1)
+                else:
+                    log_and_messages.deb_pr_tel(
+                        'Прерывание состояния ' + self._old_state + ' переключение в состояние ' + self._next_state)
+                    return self._next_state
+            log_and_messages.deb_pr_tel(
+                'Успешное завершение состояния ' + self._old_state + ' переключение в состояние ' + self._next_state)
+            self._need_hover = False
+            return self._next_state
+        else:
+            log_and_messages.deb_pr_tel(
+                'Ошибка: Создайте миссию заранее! Сейчас ' + self._old_state + ' переключение в состояние ' + self._next_state)
+            return self._next_state
+    def AUTO(self, log_and_messages):
+        self._next_state = self._old_state  # должен быть только HOVER
+        if self._mission_created:
+            self._old_state = 'AUTO'
+            log_and_messages.deb_pr_tel('STATE = ' + self._old_state)
+            self._stop_state = False
+            self._next_state = 'HOVER'
+            log_and_messages.deb_pr_tel("Starting mission")
+            # Reset mission set to first (0) waypoint
+            self.vehicle.commands.next = 0
 
+            # Set mode to AUTO to start mission
+            # http://ardupilot.org/copter/docs/auto-mode.html
+            self.vehicle.mode = VehicleMode("AUTO")
+
+            # Monitor mission.
+            # Demonstrates getting and setting the command number
+            # Uses distance_to_current_waypoint(), a convenience function for finding the
+            #   distance to the next waypoint.
+
+            while True:
+                if not self._stop_state:
+                    nextwaypoint = self.vehicle.commands.next
+                    log_and_messages.deb_pr_tel('I\'m in ' + self._old_state)
+                    print 'Distance to waypoint (%s): %sм' % (nextwaypoint, self.distance_to_current_waypoint())
+                    time.sleep(1)
+                else:
+                    log_and_messages.deb_pr_tel(
+                        'Прерывание состояния ' + self._old_state + ' переключение в состояние ' + self._next_state)
+                    return self._next_state
+            log_and_messages.deb_pr_tel(
+                'Успешное завершение состояния ' + self._old_state + ' переключение в состояние ' + self._next_state)
+            # может и не нужна стабилизация но на всякий (вдруг failsafe будет)
+            # self._need_hover = False
+            return self._next_state
+        else:
+            log_and_messages.deb_pr_tel(
+                'Ошибка: Создайте миссию заранее! Сейчас ' + self._old_state + ' переключение в состояние ' + self._next_state)
+            return self._next_state
     def motors_off(self):
         msg = self.vehicle.message_factory.command_long_encode(
             0, 0,  # target system, target component
