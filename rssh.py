@@ -13,10 +13,13 @@ try:
     while True:
         try:
             # https://pythonworld.ru/moduli/modul-subprocess.html
-            p = subprocess.Popen(['/home/pi/autocopter/build/rssh.sh'], subprocess.PIPE)
+            with subprocess.Popen(['/home/pi/autocopter/build/rssh.sh'], stdout=subprocess.PIPE) as proc:
+                print "ff"+proc.stdout.read()
+
+            #p = subprocess.Popen(['/home/pi/autocopter/build/rssh.sh'], subprocess.PIPE)
             print 'smirart.ru:2202'
-            p2 = subprocess.Popen(['/home/pi/autocopter/build/rssh2.sh'], subprocess.PIPE)
-            print 'smirart.ru:5760'
+            #p2 = subprocess.Popen(['/home/pi/autocopter/build/rssh2.sh'], subprocess.PIPE)
+            #print 'smirart.ru:5760'
             # потом переделать под это https://pythonworld.ru/moduli/modul-subprocess.html
             # ==========================================================================================================
             while True:
@@ -25,10 +28,12 @@ try:
             print ex.message + '\n'
             time.sleep(4)
         finally:
+            print "first final"
             # https://pythonworld.ru/moduli/modul-subprocess.html
-            p.kill()
-            p2.kill()
+            #p.kill()
+            #p2.kill()
 finally:
     # https://pythonworld.ru/moduli/modul-subprocess.html
-    p.kill()
-    p2.kill()
+    print "second final"
+    #p.kill()
+    #p2.kill()
