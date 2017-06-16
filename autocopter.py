@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf8 -*-
 from log_and_messages import *
-import sys, telepot, time, traceback
+import sys, telepot, time, traceback, file
 from dronekit_functions import *
 # ====================================================================================
 # Устранение проблем с кодировкой UTF-8
@@ -24,8 +24,13 @@ try:
                 # ===========================================================================================================
                 # START TELEGRAM BOT
                 #TOKEN = sys.argv[1]  # get token from command-line
-                f = open('telegrambot.token', 'r')
-                TOKEN = f.readline()
+                import os.path
+                if os.path.isfile("telegrambot.token"):
+                    f = open('telegrambot.token', 'r')
+                    TOKEN = f.readline()
+                    f.close()
+                else:
+                    break
                 bot = telepot.Bot(TOKEN)
                 # ==========================================================================================================
                 lam = log_and_messages(bot, MY_CHAT_ID, DEBUG)
