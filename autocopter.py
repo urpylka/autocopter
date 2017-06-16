@@ -24,12 +24,14 @@ try:
                 # ===========================================================================================================
                 # START TELEGRAM BOT
                 #TOKEN = sys.argv[1]  # get token from command-line
-                import os.path
-                if os.path.isfile("telegrambot.token"):
-                    f = open('telegrambot.token', 'r')
+                #import os.path
+                token_path = "/home/pi/autocopter/telegrambot.token"
+                if not os.path.isfile(token_path):
+                    f = open(token_path, 'r')
                     TOKEN = f.readline().rstrip('\n')
                     f.close()
                 else:
+                    print "Файл " + token_path + " не найден! Dronekit не будет доступен в finnaly, не правильно отработает lam."
                     break
                 bot = telepot.Bot(TOKEN)
                 # ==========================================================================================================
