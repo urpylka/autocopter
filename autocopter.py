@@ -54,8 +54,8 @@ try:
                     log_and_messages.deb_pr_tel('Connect successful!\nListening ...')
                 log_and_messages.deb_pr_tel(dronekit.status())
                     # Keep the program running.
-            except BaseException:
-                log_and_messages.deb_pr_tel('Произошла ошибка:\n' + str(BaseException) + '\nв состоянии ' + STATE + ', переход в состояние ' + nextState)
+            except BaseException as ex:
+                log_and_messages.deb_pr_tel('Произошла ошибка:\n' + ex.message + '\nв состоянии ' + STATE + ', переход в состояние ' + nextState)
             finally:
                 STATE = nextState
         elif STATE == 'IDLE':
