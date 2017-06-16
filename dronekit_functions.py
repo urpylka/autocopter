@@ -2,9 +2,15 @@
 # -*- coding: utf8 -*-
 # Import DroneKit-Python
 from dronekit import VehicleMode, LocationGlobalRelative, LocationGlobal, Command, connect
-import time, traceback, math
+import time, traceback, sys, math
 from pymavlink import mavutil
 from other_functions import get_ip
+# ====================================================================================
+# Устранение проблем с кодировкой UTF-8
+# http://webhamster.ru/mytetrashare/index/mtb0/13566385393amcr1oegx
+reload(sys)
+sys.setdefaultencoding('utf8')
+# ====================================================================================
 def get_location_metres(original_location, dNorth, dEast):
     """
     Returns a LocationGlobal object containing the latitude/longitude `dNorth` and `dEast` metres from the
