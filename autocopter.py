@@ -27,7 +27,7 @@ try:
                 import os.path
                 if os.path.isfile("telegrambot.token"):
                     f = open('telegrambot.token', 'r')
-                    TOKEN = f.readline()
+                    TOKEN = f.readline().rstrip('\n')
                     f.close()
                 else:
                     break
