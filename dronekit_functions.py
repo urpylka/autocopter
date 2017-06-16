@@ -368,7 +368,7 @@ class autocopterDronekit(object):
         self._next_state = 'HOVER'
         self._vehicle.mode = VehicleMode("GUIDED")
         if self._need_hover:
-            self._simple_goto_wrapper(self._vehicle.location.global_frame)
+            self._simple_goto_wrapper(self._vehicle.location.global_frame['lat'],self._vehicle.location.global_frame['lot'],self._vehicle.location.global_frame['alt'])
         self._need_hover = True #сброс
         while True:
             if not self._stop_state:
