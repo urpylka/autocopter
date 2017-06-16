@@ -15,8 +15,9 @@ try:
     print 'smirart.ru:2202'
     p2 = subprocess.Popen(['/home/pi/autocopter/build/rssh2.sh'], stdout=subprocess.PIPE)
     print 'smirart.ru:5760'
-    if p.stdout != None or p2.stdout != None:
-        raise Exception("что-то пошло не так")
+    print p.stdout + "ff"
+    #if p.stdout != None or p2.stdout != None:
+    #    raise Exception("что-то пошло не так")
     # потом переделать под это https://pythonworld.ru/moduli/modul-subprocess.html
     # ==========================================================================================================
     while True:
