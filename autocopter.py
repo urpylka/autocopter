@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf8 -*-
 from log_and_messages import *
-import sys, telepot, time, traceback
+import sys, telepot, time, traceback, os.path
 from dronekit_functions import *
 # ====================================================================================
 # Устранение проблем с кодировкой UTF-8
@@ -24,9 +24,8 @@ try:
                 # ===========================================================================================================
                 # START TELEGRAM BOT
                 #TOKEN = sys.argv[1]  # get token from command-line
-                #import os.path
                 token_path = "/home/pi/autocopter/telegrambot.token"
-                if not os.path.isfile(token_path):
+                if os.path.isfile(token_path):
                     f = open(token_path, 'r')
                     TOKEN = f.readline().rstrip('\n')
                     f.close()
