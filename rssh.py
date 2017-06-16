@@ -10,8 +10,8 @@ print 'internet'
 import subprocess, time
 try:
     # https://pythonworld.ru/moduli/modul-subprocess.html
-    p = subprocess.call("ssh -N -R 2202:localhost:22 -i /home/pi/.ssh/id_rsa urpylka@smirart.ru -p32122", shell=True)
-    #p = subprocess.Popen(['/home/pi/autocopter/build/rssh.sh'], subprocess.PIPE)
+    #p = subprocess.call("ssh -N -R 2202:localhost:22 -i /home/pi/.ssh/id_rsa urpylka@smirart.ru -p32122", shell=True)
+    p = subprocess.Popen(['/home/pi/autocopter/build/rssh.sh'], subprocess.PIPE)
     print 'smirart.ru:2202'
     p2 = subprocess.Popen(['/home/pi/autocopter/build/rssh2.sh'], subprocess.PIPE)
     print 'smirart.ru:5760'
