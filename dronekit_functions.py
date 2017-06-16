@@ -56,7 +56,7 @@ class autocopterDronekit(object):
                 # вывод информации о коптере, ip, заряд батареи
                 return "copter ip: %s" % get_ip() + \
                        "\nSTATE: %s" % STATE + \
-                       "\n%s" % self.get_status()
+                       "\n%s" % self.get_status
             elif command == 'create_mission':
                 self._mission_created = False
                 # exeption https://pythonworld.ru/tipy-dannyx-v-python/isklyucheniya-v-python-konstrukciya-try-except-dlya-obrabotki-isklyuchenij.html
@@ -79,7 +79,7 @@ class autocopterDronekit(object):
         elif STATE == 'TAKEOFF':
             if command == '/status':
                 # вывод информации о коптере, ip, заряд батареи
-                return "copter ip: " + get_ip() + '\n' + self.get_status() + '\nSTATE: ' + STATE
+                return "copter ip: " + get_ip() + '\n' + self.get_status + '\nSTATE: ' + STATE
             elif command == 'create_mission':
                 self._mission_created = False
                 # exeption https://pythonworld.ru/tipy-dannyx-v-python/isklyucheniya-v-python-konstrukciya-try-except-dlya-obrabotki-isklyuchenij.html
@@ -105,7 +105,7 @@ class autocopterDronekit(object):
         elif STATE == 'HOVER':
             if command == '/status':
                 # вывод информации о коптере, ip, заряд батареи
-                return "copter ip: " + get_ip() + '\n' + self.get_status() + '\nSTATE: ' + STATE
+                return "copter ip: " + get_ip() + '\n' + self.get_status + '\nSTATE: ' + STATE
             elif command == 'create_mission':
                 self._mission_created = False
                 # exeption https://pythonworld.ru/tipy-dannyx-v-python/isklyucheniya-v-python-konstrukciya-try-except-dlya-obrabotki-isklyuchenij.html
@@ -137,7 +137,7 @@ class autocopterDronekit(object):
         elif STATE == 'GOTO':
             if command == '/status':
                 # вывод информации о коптере, ip, заряд батареи
-                return "copter ip: " + get_ip() + '\n' + self.get_status() + '\nSTATE: ' + STATE
+                return "copter ip: " + get_ip() + '\n' + self.get_status + '\nSTATE: ' + STATE
             elif command == '/land':
                 self._new_state(STATE,'LAND')
                 return "Посадка из состояния: %s" % self._old_state
@@ -152,7 +152,7 @@ class autocopterDronekit(object):
         elif STATE == 'LAND':
             if command == '/status':
                 # вывод информации о коптере, ip, заряд батареи
-                return "copter ip: " + get_ip() + '\n' + self.get_status() + '\nSTATE: ' + STATE
+                return "copter ip: " + get_ip() + '\n' + self.get_status + '\nSTATE: ' + STATE
             elif command == 'create_mission':
                 self._mission_created = False
                 # exeption https://pythonworld.ru/tipy-dannyx-v-python/isklyucheniya-v-python-konstrukciya-try-except-dlya-obrabotki-isklyuchenij.html
@@ -175,7 +175,7 @@ class autocopterDronekit(object):
         elif STATE == 'AUTO':
             if command == '/status':
                 # вывод информации о коптере, ip, заряд батареи
-                return "copter ip: " + get_ip() + '\n' + self.get_status() + '\nSTATE: ' + STATE + '\nРасстояние до следующего WP: ' + self.distance_to_current_waypoint() + "м"
+                return "copter ip: " + get_ip() + '\n' + self.get_status + '\nSTATE: ' + STATE + '\nРасстояние до следующего WP: ' + self.distance_to_current_waypoint + "м"
             elif command == '/land':
                 self._new_state(STATE,'LAND')
                 return "Посадка из состояния: %s" % self._old_state
@@ -529,7 +529,7 @@ class autocopterDronekit(object):
                 if not self._stop_state:
                     nextwaypoint = self._vehicle.commands.next
                     log_and_messages.deb_pr_tel('I\'m in ' + self._old_state)
-                    print 'Distance to waypoint (%s): %sм' % (nextwaypoint, self.distance_to_current_waypoint())
+                    print 'Distance to waypoint (%s): %sм' % (nextwaypoint, self.distance_to_current_waypoint)
                     time.sleep(1)
                 else:
                     log_and_messages.deb_pr_tel(
