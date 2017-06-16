@@ -2,7 +2,7 @@
 # -*- coding: utf8 -*-
 
 from log_and_messages import *
-import sys, telepot, time
+import sys, telepot, time, traceback
 from dronekit_functions import *
 # ====================================================================================
 # Устранение проблем с кодировкой UTF-8
@@ -55,7 +55,7 @@ try:
                 log_and_messages.deb_pr_tel(dronekit.status())
                     # Keep the program running.
             except BaseException as ex:
-                log_and_messages.deb_pr_tel('Произошла ошибка:\n' + ex.message + '\nв состоянии ' + STATE + ', переход в состояние ' + nextState)
+                log_and_messages.deb_pr_tel('Произошла ошибка:\n' + ex.message + "\n" + traceback.format_exc() + '\nв состоянии ' + STATE + ', переход в состояние ' + nextState)
             finally:
                 STATE = nextState
         elif STATE == 'IDLE':
