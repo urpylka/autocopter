@@ -49,9 +49,7 @@ class autocopterDronekit(object):
             if command == '/status':
                 # вывод информации о коптере, ip, заряд батареи
                 return "copter ip: %s" % get_ip() + \
-              "\n%s" % self._vehicle.battery + \
-              "\nLast Heartbeat: %s" % self.get_status() + \
-              "\nSTATE: %s" % self.STATE
+                       "\nSTATE: %s" % self.STATE
             elif command == 'create_mission':
                 self._mission_created = False
                 # exeption https://pythonworld.ru/tipy-dannyx-v-python/isklyucheniya-v-python-konstrukciya-try-except-dlya-obrabotki-isklyuchenij.html
