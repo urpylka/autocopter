@@ -44,11 +44,14 @@ class autocopterDronekit(object):
         self._next_state = NEW_STATE
     def new_command(self,STATE,command,params=None):
         if STATE == 'INIT':
-            return 'Ошибка 3! Некорректная команда ' + command + ' для состояния %s' % STATE
+            return 'Ошибка 3! Некорректная команда %s' % command + ' для состояния %s' % STATE
         elif STATE == 'IDLE':
             if command == '/status':
                 # вывод информации о коптере, ip, заряд батареи
-                return 'copter ip: ' + get_ip() + '\n' + self.get_status() + '\nSTATE: ' + STATE
+                return "copter ip: %s" % get_ip() + \
+              "\n%s" % self._vehicle.battery + \
+              "\nLast Heartbeat: %s" % self.get_status() + \
+              "\nSTATE: %s" % self.STATE
             elif command == 'create_mission':
                 self._mission_created = False
                 # exeption https://pythonworld.ru/tipy-dannyx-v-python/isklyucheniya-v-python-konstrukciya-try-except-dlya-obrabotki-isklyuchenij.html
