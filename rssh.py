@@ -18,12 +18,8 @@ try:
     # потом переделать под это https://pythonworld.ru/moduli/modul-subprocess.html
     # ==========================================================================================================
     while True:
-        time.sleep(10)
-except Exception as ex:
-    print ex.message + '\n'
-    time.sleep(4)
+        time.sleep(4)
 finally:
-    print "first final"
     # https://pythonworld.ru/moduli/modul-subprocess.html
     p.kill()
     p2.kill()
