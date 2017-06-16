@@ -89,9 +89,9 @@ class autocopterDronekit(object):
                     self.adds_square_mission(self._vehicle.location.global_frame, 20)
                     self._mission_created = True
                     return "Миссия успешно построена!"
-                except Exception:
+                except Exception as ex:
                     self._mission_created = False
-                    return "Произошла ошибка при построении миссии" + Exception.message
+                    return "Произошла ошибка при построении миссии\n" + ex.message + "\n" + traceback.format_exc()
                 finally:
                     pass
             elif command == '/land':
@@ -115,9 +115,9 @@ class autocopterDronekit(object):
                     self.adds_square_mission(self._vehicle.location.global_frame, 20)
                     self._mission_created = True
                     return "Миссия успешно построена!"
-                except Exception:
+                except Exception as ex:
                     self._mission_created = False
-                    return "Произошла ошибка при построении миссии" + Exception.message
+                    return "Произошла ошибка при построении миссии\n" + ex.message + "\n" + traceback.format_exc()
                 finally:
                     pass
             elif command == '/land':
@@ -162,9 +162,9 @@ class autocopterDronekit(object):
                     self.adds_square_mission(self._vehicle.location.global_frame, 20)
                     self._mission_created = True
                     return "Миссия успешно построена!"
-                except Exception:
+                except Exception as ex:
                     self._mission_created = False
-                    return "Произошла ошибка при построении миссии" + Exception.message
+                    return "Произошла ошибка при построении миссии\n" + ex.message + "\n" + traceback.format_exc()
                 finally:
                     pass
             elif command == '/hover':
