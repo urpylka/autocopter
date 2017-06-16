@@ -38,9 +38,6 @@ def get_distance_metres(aLocation1, aLocation2):
     dlat = aLocation2.lat - aLocation1.lat
     dlong = aLocation2.lon - aLocation1.lon
     return math.sqrt((dlat * dlat) + (dlong * dlong)) * 1.113195e5
-#def status_printer(txt):
-#    print('status urpylka')
-#    print(txt)
 class autocopterDronekit(object):
     def _new_state(self,CURRENT_STATE,NEW_STATE):
         self._stop_state = True
@@ -217,9 +214,6 @@ class autocopterDronekit(object):
         self._stop_state = False
         self._next_state = 'IDLE'
         # ==============================================================
-    @property
-    def status(self):
-        return self.status
     @property
     def status_of_connect(self):
         if self._vehicle != None:

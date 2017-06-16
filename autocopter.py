@@ -51,7 +51,6 @@ try:
                 if dronekit.status_of_connect:
                     nextState = 'IDLE'
                     lam.deb_pr_tel('Connect successful!\nListening ...')
-                lam.deb_pr_tel(dronekit.status())
                     # Keep the program running.
             except Exception as ex:
                 lam.deb_pr_tel('Произошла ошибка:\n' + ex.message + "\n" + traceback.format_exc() + '\nТаймаут 10 сек. Переход из состояниия ' + STATE + ', переход в состояние ' + nextState)
