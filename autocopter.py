@@ -54,8 +54,8 @@ try:
                 lam.deb_pr_tel(dronekit.status())
                     # Keep the program running.
             except Exception as ex:
-                lam.deb_pr_tel('Произошла ошибка:\n' + ex.message + "\n" + traceback.format_exc() + '\nв состоянии ' + STATE + ', переход в состояние ' + nextState)
-                break
+                lam.deb_pr_tel('Произошла ошибка:\n' + ex.message + "\n" + traceback.format_exc() + '\nТаймаут 10 сек. Переход из состояниия ' + STATE + ', переход в состояние ' + nextState)
+                time.sleep(10)
             finally:
                 STATE = nextState
         elif STATE == 'IDLE':
