@@ -457,7 +457,7 @@ class autocopterDronekit(object):
             else:
                 log_and_messages.deb_pr_tel(
                     'Прерывание состояния ' + self._old_state + ' переключение в состояние ' + self._next_state)
-                log_and_messages.deb_pr_tel('Stopping takeoff on arm!')
+                log_and_messages.deb_pr_tel('Stopping takeoff on fly!')
                 return self._next_state
         log_and_messages.deb_pr_tel(
             'Успешное завершение состояния ' + self._old_state + ' переключение в состояние ' + self._next_state)

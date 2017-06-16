@@ -82,10 +82,10 @@ try:
                     'Произошла ошибка:\n' + BaseException.message + '\nв состоянии ' + STATE + ', переход в состояние ' + nextState)
             finally:
                 STATE = nextState
-        elif STATE == 'GUIDED':
-            nextState = 'GUIDED'
+        elif STATE == 'HOVER':
+            nextState = 'HOVER'
             try:
-                nextState = dronekit.GUIDED(lam)
+                nextState = dronekit.HOVER(lam)
             except Exception as ex:
                 lam.deb_pr_tel(
                     'Произошла ошибка:\n' + ex.message + '\nв состоянии ' + STATE + ', переход в состояние ' + nextState)
