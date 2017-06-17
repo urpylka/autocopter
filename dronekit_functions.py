@@ -48,6 +48,20 @@ class autocopterDronekit(object):
         self._stop_state = True
         self._old_state = CURRENT_STATE
         self._next_state = NEW_STATE
+    def _create_mission(self):
+        self._mission_created = False
+        # exeption https://pythonworld.ru/tipy-dannyx-v-python/isklyucheniya-v-python-konstrukciya-try-except-dlya-obrabotki-isklyuchenij.html
+        try:
+            self._goto_location = LocationGlobalRelative(params['latitude'], params['longitude'], 2)
+            # print 'Create a new mission (for current location)'
+            self.adds_square_mission(self._vehicle.location.global_frame, 3)
+            self._mission_created = True
+            return "Миссия успешно построена!"
+        except Exception as ex:
+            self._mission_created = False
+            return "Произошла ошибка при построении миссии\n" + ex.message + "\n" + traceback.format_exc()
+        finally:
+            pass
     def new_command(self,STATE,command,params=None):
         if STATE == 'INIT':
             return 'Ошибка 3! Некорректная команда %s' % command + ' для состояния %s' % STATE
@@ -58,19 +72,7 @@ class autocopterDronekit(object):
                        "\nSTATE: %s" % STATE + \
                        "\n%s" % self.get_status
             elif command == 'create_mission':
-                self._mission_created = False
-                # exeption https://pythonworld.ru/tipy-dannyx-v-python/isklyucheniya-v-python-konstrukciya-try-except-dlya-obrabotki-isklyuchenij.html
-                try:
-                    self._goto_location = LocationGlobalRelative(params['latitude'],params['longitude'],70)
-                    #print 'Create a new mission (for current location)'
-                    self.adds_square_mission(self._vehicle.location.global_frame, 20)
-                    self._mission_created = True
-                    return "Миссия успешно построена!"
-                except Exception as ex:
-                    self._mission_created = False
-                    return "Произошла ошибка при построении миссии:\n" + ex.message + "\n" + traceback.format_exc()
-                finally:
-                    pass
+                self._create_mission()
             elif command == '/takeoff':
                 self._new_state(STATE,'TAKEOFF')
                 return "Взлет из состояния: %s" % self._old_state
@@ -81,19 +83,7 @@ class autocopterDronekit(object):
                 # вывод информации о коптере, ip, заряд батареи
                 return "copter ip: " + get_ip() + '\n' + self.get_status + '\nSTATE: ' + STATE
             elif command == 'create_mission':
-                self._mission_created = False
-                # exeption https://pythonworld.ru/tipy-dannyx-v-python/isklyucheniya-v-python-konstrukciya-try-except-dlya-obrabotki-isklyuchenij.html
-                try:
-                    self._goto_location = LocationGlobalRelative(params['latitude'],params['longitude'],70)
-                    #print 'Create a new mission (for current location)'
-                    self.adds_square_mission(self._vehicle.location.global_frame, 20)
-                    self._mission_created = True
-                    return "Миссия успешно построена!"
-                except Exception as ex:
-                    self._mission_created = False
-                    return "Произошла ошибка при построении миссии\n" + ex.message + "\n" + traceback.format_exc()
-                finally:
-                    pass
+                self._create_mission()
             elif command == '/land':
                 self._new_state(STATE,'LAND')
                 return "Посадка из состояния: %s" % self._old_state
@@ -107,19 +97,7 @@ class autocopterDronekit(object):
                 # вывод информации о коптере, ip, заряд батареи
                 return "copter ip: " + get_ip() + '\n' + self.get_status + '\nSTATE: ' + STATE
             elif command == 'create_mission':
-                self._mission_created = False
-                # exeption https://pythonworld.ru/tipy-dannyx-v-python/isklyucheniya-v-python-konstrukciya-try-except-dlya-obrabotki-isklyuchenij.html
-                try:
-                    self._goto_location = LocationGlobalRelative(params['latitude'],params['longitude'],70)
-                    #print 'Create a new mission (for current location)'
-                    self.adds_square_mission(self._vehicle.location.global_frame, 20)
-                    self._mission_created = True
-                    return "Миссия успешно построена!"
-                except Exception as ex:
-                    self._mission_created = False
-                    return "Произошла ошибка при построении миссии\n" + ex.message + "\n" + traceback.format_exc()
-                finally:
-                    pass
+                self._create_mission()
             elif command == '/land':
                 self._new_state(STATE,'LAND')
                 return "Посадка из состояния: %s" % self._old_state
@@ -154,19 +132,7 @@ class autocopterDronekit(object):
                 # вывод информации о коптере, ip, заряд батареи
                 return "copter ip: " + get_ip() + '\n' + self.get_status + '\nSTATE: ' + STATE
             elif command == 'create_mission':
-                self._mission_created = False
-                # exeption https://pythonworld.ru/tipy-dannyx-v-python/isklyucheniya-v-python-konstrukciya-try-except-dlya-obrabotki-isklyuchenij.html
-                try:
-                    self._goto_location = LocationGlobalRelative(params['latitude'],params['longitude'],70)
-                    #print 'Create a new mission (for current location)'
-                    self.adds_square_mission(self._vehicle.location.global_frame, 20)
-                    self._mission_created = True
-                    return "Миссия успешно построена!"
-                except Exception as ex:
-                    self._mission_created = False
-                    return "Произошла ошибка при построении миссии\n" + ex.message + "\n" + traceback.format_exc()
-                finally:
-                    pass
+                self._create_mission()
             elif command == '/hover':
                 self._new_state(STATE,'HOVER')
                 return "Зависнуть из состояния: %s" % self._old_state
