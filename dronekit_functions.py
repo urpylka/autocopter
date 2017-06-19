@@ -54,7 +54,7 @@ class autocopterDronekit(object):
         try:
             self._goto_location = LocationGlobalRelative(lat,lon, 2)
             # print 'Create a new mission (for current location)'
-            self.adds_square_mission(self._vehicle.location.global_realative_frame, 3)
+            self.adds_square_mission(self._vehicle.location.global_relative_frame, 3)
             self._mission_created = True
             return "Миссия успешно построена!"
         except Exception as ex:
@@ -72,13 +72,10 @@ class autocopterDronekit(object):
                        "\nSTATE: %s" % STATE + \
                        "\n%s" % self.get_status
             elif command == 'create_mission':
-                #return "dsdsadasdassadasd"
-                self._goto_location = LocationGlobalRelative(params['latitude'], params['longitude'], 2)
-                self._mission_created = True
-                return "Миссия успешно построена"+params['latitude']+ params['longitude']
+                return self._create_mission(params['latitude'],params['longitude'])
             elif command == '/takeoff':
                 self._new_state(STATE,'TAKEOFF')
-                return "Взлет из состояния: %s" % self._old_state
+                #return "Взлет из состояния: %s" % self._old_state
             else:
                 return 'Ошибка 3! Некорректная команда ' + command + ' для состояния %s' % STATE
         elif STATE == 'TAKEOFF':
@@ -86,7 +83,7 @@ class autocopterDronekit(object):
                 # вывод информации о коптере, ip, заряд батареи
                 return "copter ip: " + get_ip() + '\n' + self.get_status + '\nSTATE: ' + STATE
             elif command == 'create_mission':
-                self._create_mission(params['latitude'], params['longitude'])
+                return self._create_mission(params['latitude'], params['longitude'])
             elif command == '/land':
                 self._new_state(STATE,'LAND')
                 return "Посадка из состояния: %s" % self._old_state
@@ -100,9 +97,9 @@ class autocopterDronekit(object):
                 # вывод информации о коптере, ip, заряд батареи
                 return "copter ip: " + get_ip() + '\n' + self.get_status + '\nSTATE: ' + STATE
             elif command == '/stop':
-                self.motors_off()
+                return self.motors_off()
             elif command == 'create_mission':
-                self._create_mission(params['latitude'], params['longitude'])
+                return self._create_mission(params['latitude'], params['longitude'])
             elif command == '/land':
                 self._new_state(STATE,'LAND')
                 return "Посадка из состояния: %s" % self._old_state
@@ -137,7 +134,7 @@ class autocopterDronekit(object):
                 # вывод информации о коптере, ip, заряд батареи
                 return "copter ip: " + get_ip() + '\n' + self.get_status + '\nSTATE: ' + STATE
             elif command == 'create_mission':
-                self._create_mission(params['latitude'], params['longitude'])
+                return self._create_mission(params['latitude'], params['longitude'])
             elif command == '/hover':
                 self._new_state(STATE,'HOVER')
                 return "Зависнуть из состояния: %s" % self._old_state
