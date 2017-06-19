@@ -48,13 +48,13 @@ class autocopterDronekit(object):
         self._stop_state = True
         self._old_state = CURRENT_STATE
         self._next_state = NEW_STATE
-    def _create_mission(self):
+    def _create_mission(self,lat,lon):
         self._mission_created = False
         # exeption https://pythonworld.ru/tipy-dannyx-v-python/isklyucheniya-v-python-konstrukciya-try-except-dlya-obrabotki-isklyuchenij.html
         try:
-            self._goto_location = LocationGlobalRelative(params['latitude'], params['longitude'], 2)
+            self._goto_location = LocationGlobalRelative(lat,lon, 2)
             # print 'Create a new mission (for current location)'
-            self.adds_square_mission(self._vehicle.location.global_frame, 3)
+            self.adds_square_mission(self._vehicle.location.global_realative_frame, 3)
             self._mission_created = True
             return "Миссия успешно построена!"
         except Exception as ex:
@@ -72,7 +72,10 @@ class autocopterDronekit(object):
                        "\nSTATE: %s" % STATE + \
                        "\n%s" % self.get_status
             elif command == 'create_mission':
-                self._create_mission()
+                #return "dsdsadasdassadasd"
+                self._goto_location = LocationGlobalRelative(params['latitude'], params['longitude'], 2)
+                self._mission_created = True
+                return "Миссия успешно построена"+params['latitude']+ params['longitude']
             elif command == '/takeoff':
                 self._new_state(STATE,'TAKEOFF')
                 return "Взлет из состояния: %s" % self._old_state
@@ -83,7 +86,7 @@ class autocopterDronekit(object):
                 # вывод информации о коптере, ip, заряд батареи
                 return "copter ip: " + get_ip() + '\n' + self.get_status + '\nSTATE: ' + STATE
             elif command == 'create_mission':
-                self._create_mission()
+                self._create_mission(params['latitude'], params['longitude'])
             elif command == '/land':
                 self._new_state(STATE,'LAND')
                 return "Посадка из состояния: %s" % self._old_state
@@ -96,8 +99,10 @@ class autocopterDronekit(object):
             if command == '/status':
                 # вывод информации о коптере, ip, заряд батареи
                 return "copter ip: " + get_ip() + '\n' + self.get_status + '\nSTATE: ' + STATE
+            elif command == '/stop':
+                self.motors_off()
             elif command == 'create_mission':
-                self._create_mission()
+                self._create_mission(params['latitude'], params['longitude'])
             elif command == '/land':
                 self._new_state(STATE,'LAND')
                 return "Посадка из состояния: %s" % self._old_state
@@ -132,7 +137,7 @@ class autocopterDronekit(object):
                 # вывод информации о коптере, ip, заряд батареи
                 return "copter ip: " + get_ip() + '\n' + self.get_status + '\nSTATE: ' + STATE
             elif command == 'create_mission':
-                self._create_mission()
+                self._create_mission(params['latitude'], params['longitude'])
             elif command == '/hover':
                 self._new_state(STATE,'HOVER')
                 return "Зависнуть из состояния: %s" % self._old_state
@@ -293,7 +298,7 @@ class autocopterDronekit(object):
         self._vehicle.mode = VehicleMode("LAND")
         while not self.onLand:
             if not self._stop_state:
-                log_and_messages.deb_pr_tel('Waiting for ' + self._old_state)
+                #log_and_messages.deb_pr_tel('Waiting for ' + self._old_state)
                 time.sleep(1)
             else:
                 log_and_messages.deb_pr_tel('Прерывание состояния ' + self._old_state + ' переключение в состояние ' + self._next_state)
@@ -307,8 +312,8 @@ class autocopterDronekit(object):
         self._next_state = 'IDLE'
         # http://ardupilot.org/copter/docs/ac2_guidedmode.html
         # http://python.dronekit.io/examples/guided-set-speed-yaw-demo.html
-        self._vehicle.mode = VehicleMode("GUIDED")
         self._vehicle.armed = False
+        self._vehicle.mode = VehicleMode("GUIDED")
         while True:
             if not self._stop_state:
                 #log_and_messages.deb_pr_tel('I\'m in '+self._old_state)
@@ -356,7 +361,7 @@ class autocopterDronekit(object):
         self._vehicle.mode = VehicleMode("RTL")
         while not self.onLand:
             if not self._stop_state:
-                log_and_messages.deb_pr_tel('Waiting for ' + self._old_state)
+                #log_and_messages.deb_pr_tel('Waiting for ' + self._old_state)
                 time.sleep(1)
             else:
                 log_and_messages.deb_pr_tel(
@@ -377,7 +382,7 @@ class autocopterDronekit(object):
         # check that we have a GPS fix
         # check that EKF pre-arm is complete
         return self._vehicle.mode != 'INITIALISING' and self._vehicle.gps_0.fix_type > 1# and self.vehicle._ekf_predposhorizabs #отключена проверка ekf
-    def TAKEOFF(self, log_and_messages, aTargetAltitude=70):
+    def TAKEOFF(self, log_and_messages, aTargetAltitude=2):
         self._old_state = 'TAKEOFF'
         log_and_messages.deb_pr_tel('STATE = ' + self._old_state)
         self._stop_state = False
@@ -387,10 +392,11 @@ class autocopterDronekit(object):
         """
         log_and_messages.deb_pr_tel('Basic pre-arm checks')
         # Don't let the user try to arm until autopilot is ready
+        log_and_messages.deb_pr_tel('Waiting for vehicle to initialise...')
         while not self._is_armable: #проверка не дронкита, а собственная
             if not self._stop_state:
-                log_and_messages.deb_pr_tel('Waiting for ' + self._old_state)
-                log_and_messages.deb_pr_tel('Waiting for vehicle to initialise...')
+                #log_and_messages.deb_pr_tel('Waiting for ' + self._old_state)
+                #log_and_messages.deb_pr_tel('Waiting for vehicle to initialise...')
                 time.sleep(1)
             else:
                 log_and_messages.deb_pr_tel(
@@ -403,8 +409,8 @@ class autocopterDronekit(object):
         self._vehicle.armed = True
         while not self._vehicle.armed:
             if not self._stop_state:
-                log_and_messages.deb_pr_tel('Waiting for ' + self._old_state)
-                log_and_messages.deb_pr_tel('Waiting for arming...')
+                #log_and_messages.deb_pr_tel('Waiting for ' + self._old_state)
+                #log_and_messages.deb_pr_tel('Waiting for arming...')
                 time.sleep(1)
             else:
                 log_and_messages.deb_pr_tel(
@@ -417,7 +423,7 @@ class autocopterDronekit(object):
         #  after Vehicle.simple_takeoff will execute immediately).
         while self._vehicle.location.global_relative_frame.alt < aTargetAltitude * 0.95: # Trigger just below target alt.
             if not self._stop_state:
-                log_and_messages.deb_pr_tel('Waiting for ' + self._old_state)
+                #log_and_messages.deb_pr_tel('Waiting for ' + self._old_state)
                 log_and_messages.deb_pr_tel("Altitude: %s" % self._vehicle.location.global_relative_frame.alt)
                 time.sleep(1)
             else:
@@ -456,8 +462,8 @@ class autocopterDronekit(object):
             self._simple_goto_wrapper(self._goto_location['lat'],self._goto_location['lon'],self._goto_location['alt'])
             while self._is_arrived(self._goto_location['lat'],self._goto_location['lon'],self._goto_location['alt']):
                 if not self._stop_state:
-                    log_and_messages.deb_pr_tel('I\'m in '+self._old_state)
-                    log_and_messages.deb_pr_tel('До точки назначения: ' + get_distance_metres(self._goto_location, self._vehicle.location.global_frame) + "м")
+                    #log_and_messages.deb_pr_tel('I\'m in '+self._old_state)
+                    log_and_messages.deb_pr_tel('До точки назначения: ' + get_distance_metres(self._goto_location, self._vehicle.location.global_relative_frame) + "м")
                     time.sleep(1)
                 else:
                     log_and_messages.deb_pr_tel(
@@ -494,8 +500,7 @@ class autocopterDronekit(object):
             while True:
                 if not self._stop_state:
                     nextwaypoint = self._vehicle.commands.next
-                    log_and_messages.deb_pr_tel('I\'m in ' + self._old_state)
-                    print 'Distance to waypoint (%s): %sм' % (nextwaypoint, self.distance_to_current_waypoint)
+                    log_and_messages.deb_pr_tel('Distance to waypoint (%s): %sм' % (nextwaypoint, self.distance_to_current_waypoint))
                     time.sleep(1)
                 else:
                     log_and_messages.deb_pr_tel(

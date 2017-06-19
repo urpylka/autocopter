@@ -46,7 +46,17 @@ try:
                         if content_type == 'text':
                             lam.deb_pr_tel(dronekit.new_command(STATE, msg['text']))
                         elif content_type == 'location':
-                            lam.deb_pr_tel(dronekit.new_command(STATE, 'create_mission', msg['location']))
+                            loc = msg['location']
+                            if type(loc) == type(dict()):
+                                print 'Its dict!'
+                            else:
+                                print type(loc)
+                            lam.deb_pr_tel(msg['location'] + "asdasdasdasdasdasda1\n")
+                            lam.deb_pr_tel(msg['loc'] + "asdasdasdasdasdasda2\n")
+                            lam.deb_pr_tel(msg['location'].get('latitude') + "3dasdasdasd312" + loc.get('longitude') + "31dsadasdasda2312312313\n")
+                            lam.deb_pr_tel(msg['location']['latitude'] + "312312" + loc['longitude'] + "312312312312313\n")
+                            lam.deb_pr_tel(msg['location'].latitude + "1111" + loc.longitude + "112\n")
+                            # lam.deb_pr_tel(dronekit.new_command(STATE, 'create_mission', msg['location']))
                         else:
                             lam.deb_pr_tel('Ошибка 2! Неверный тип: только text и location')
                     else:
