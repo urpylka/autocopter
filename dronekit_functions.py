@@ -63,7 +63,7 @@ class autocopterDronekit(object):
         finally:
             pass
     def get_location(self,bot,chat_id):
-        bot.sendLocation(chat_id, self._vehicle.location.global_frame.latitude, self._vehicle.location.global_frame.longitude)
+        bot.sendLocation(chat_id, self._vehicle.location.global_frame.lat, self._vehicle.location.global_frame.lon)
     def new_command(self,STATE,command,params=None):
         if STATE == 'INIT':
             return 'Ошибка 3! Некорректная команда %s' % command + ' для состояния %s' % STATE
