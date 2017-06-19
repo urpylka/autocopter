@@ -74,6 +74,7 @@ class autocopterDronekit(object):
                        "\nSTATE: %s" % STATE + \
                        "\n%s" % self.get_status
             elif command == 'create_mission':
+                self._new_state(STATE,'TAKEOFF')
                 return self._create_mission(params['latitude'],params['longitude'])
             elif command == '/takeoff':
                 self._new_state(STATE,'TAKEOFF')
@@ -98,8 +99,6 @@ class autocopterDronekit(object):
             if command == '/status':
                 # вывод информации о коптере, ip, заряд батареи
                 return "copter ip: " + get_ip() + '\n' + self.get_status + '\nSTATE: ' + STATE
-            elif command == '/stop':
-                self.motors_off()
             elif command == 'create_mission':
                 return self._create_mission(params['latitude'], params['longitude'])
             elif command == '/land':
@@ -388,7 +387,7 @@ class autocopterDronekit(object):
         self._old_state = 'TAKEOFF'
         log_and_messages.deb_pr_tel('STATE = ' + self._old_state)
         self._stop_state = False
-        self._next_state = 'HOVER'
+        self._next_state = 'GOTO'
         """
         Arms vehicle and fly to aTargetAltitude.
         """
@@ -454,7 +453,7 @@ class autocopterDronekit(object):
             #print "Еще не долетели"
             return False
     def GOTO(self,log_and_messages):
-        self._next_state = self._old_state # должен быть только HOVER
+        self._next_state = 'HOVER' # должен быть только HOVER
         if self._mission_created:
             self._old_state = 'GOTO'
             log_and_messages.deb_pr_tel('STATE = ' + self._old_state)
@@ -468,11 +467,9 @@ class autocopterDronekit(object):
                     log_and_messages.deb_pr_tel('До точки назначения: ' + get_distance_metres(self._goto_location, self._vehicle.location.global_relative_frame) + "м")
                     time.sleep(1)
                 else:
-                    log_and_messages.deb_pr_tel(
-                        'Прерывание состояния ' + self._old_state + ' переключение в состояние ' + self._next_state)
+                    log_and_messages.deb_pr_tel('Прерывание состояния ' + self._old_state + ' переключение в состояние ' + self._next_state)
                     return self._next_state
-            log_and_messages.deb_pr_tel(
-                'Успешное завершение состояния ' + self._old_state + ' переключение в состояние ' + self._next_state)
+            log_and_messages.deb_pr_tel('Успешное завершение состояния ' + self._old_state + ' переключение в состояние ' + self._next_state)
             self._need_hover = False
             return self._next_state
         else:
@@ -517,11 +514,3 @@ class autocopterDronekit(object):
             log_and_messages.deb_pr_tel(
                 'Ошибка: Создайте миссию заранее! Сейчас ' + self._old_state + ' переключение в состояние ' + self._next_state)
             return self._next_state
-    def motors_off(self):
-        msg = self._vehicle.message_factory.command_long_encode(
-            0, 0,  # target system, target component
-            mavutil.mavlink.MAV_CMD_DO_FLIGHTTERMINATION,  # command
-            0,  # confirmation
-            1,  # Flight termination activated if > 0.5
-            0, 0, 0, 0, 0, 0)
-        self._vehicle.send_mavlink(msg)
