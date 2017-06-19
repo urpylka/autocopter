@@ -47,6 +47,8 @@ try:
                             lam.deb_pr_tel(dronekit.new_command(STATE, msg['text']))
                         elif content_type == 'location':
                             lam.deb_pr_tel(dronekit.new_command(STATE, 'create_mission', msg['location']))
+                        elif content_type == 'sticker':
+                            dronekit.get_location(bot,MY_CHAT_ID)
                         else:
                             lam.deb_pr_tel('Ошибка 2! Неверный тип: только text и location')
                     else:

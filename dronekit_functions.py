@@ -52,9 +52,9 @@ class autocopterDronekit(object):
         self._mission_created = False
         # exeption https://pythonworld.ru/tipy-dannyx-v-python/isklyucheniya-v-python-konstrukciya-try-except-dlya-obrabotki-isklyuchenij.html
         try:
-            self._goto_location = LocationGlobalRelative(lat,lon, 2)
+            self._goto_location = LocationGlobalRelative(lat,lon,self._work_alt)
             # print 'Create a new mission (for current location)'
-            self.adds_square_mission(self._vehicle.location.global_relative_frame, 3)
+            self.adds_square_mission(self._vehicle.location.global_relative_frame, 6)
             self._mission_created = True
             return "Миссия успешно построена!"
         except Exception as ex:
@@ -62,6 +62,8 @@ class autocopterDronekit(object):
             return "Произошла ошибка при построении миссии\n" + ex.message + "\n" + traceback.format_exc()
         finally:
             pass
+    def get_location(self,bot,chat_id):
+        bot.sendLocation(chat_id, self._vehicle.location.global_frame.latitude, self._vehicle.location.global_frame.longitude)
     def new_command(self,STATE,command,params=None):
         if STATE == 'INIT':
             return 'Ошибка 3! Некорректная команда %s' % command + ' для состояния %s' % STATE
@@ -97,7 +99,7 @@ class autocopterDronekit(object):
                 # вывод информации о коптере, ip, заряд батареи
                 return "copter ip: " + get_ip() + '\n' + self.get_status + '\nSTATE: ' + STATE
             elif command == '/stop':
-                return self.motors_off()
+                self.motors_off()
             elif command == 'create_mission':
                 return self._create_mission(params['latitude'], params['longitude'])
             elif command == '/land':
@@ -174,6 +176,7 @@ class autocopterDronekit(object):
         # построение миссии
         self._mission_created = False
         self._goto_location = None
+        self._work_alt = 5
         # необходимость в HOVER
         self._need_hover = True
         # ==============================================================
@@ -213,6 +216,7 @@ class autocopterDronekit(object):
               "\nSystem status: %s" % self._vehicle.system_status.state + \
               "\nMode: %s" % self._vehicle.mode.name + \
               "\nGlobal Location: %s" % self._vehicle.location.global_frame + \
+              "\nGlobal Relative Location: %s" % self._vehicle.location.global_relative_frame + \
               "\nLocal Location: %s" % self._vehicle.location.local_frame + \
               "\nAttitude: %s" % self._vehicle.attitude + \
               "\nHeading: %s" % self._vehicle.heading + \
@@ -379,7 +383,8 @@ class autocopterDronekit(object):
         # check that we have a GPS fix
         # check that EKF pre-arm is complete
         return self._vehicle.mode != 'INITIALISING' and self._vehicle.gps_0.fix_type > 1# and self.vehicle._ekf_predposhorizabs #отключена проверка ekf
-    def TAKEOFF(self, log_and_messages, aTargetAltitude=2):
+    def TAKEOFF(self, log_and_messages):
+        aTargetAltitude = self._work_alt
         self._old_state = 'TAKEOFF'
         log_and_messages.deb_pr_tel('STATE = ' + self._old_state)
         self._stop_state = False
@@ -456,8 +461,8 @@ class autocopterDronekit(object):
             self._stop_state = False
             self._next_state = 'HOVER'
             self._vehicle.mode = VehicleMode("GUIDED")
-            self._simple_goto_wrapper(self._goto_location['lat'],self._goto_location['lon'],self._goto_location['alt'])
-            while self._is_arrived(self._goto_location['lat'],self._goto_location['lon'],self._goto_location['alt']):
+            self._simple_goto_wrapper(self._goto_location.lat,self._goto_location.lon,self._goto_location.alt)
+            while self._is_arrived(self._goto_location.lat,self._goto_location.lon,self._goto_location.alt):
                 if not self._stop_state:
                     #log_and_messages.deb_pr_tel('I\'m in '+self._old_state)
                     log_and_messages.deb_pr_tel('До точки назначения: ' + get_distance_metres(self._goto_location, self._vehicle.location.global_relative_frame) + "м")
