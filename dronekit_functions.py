@@ -175,7 +175,7 @@ class autocopterDronekit(object):
         # построение миссии
         self._mission_created = False
         self._goto_location = None
-        self._work_alt = 15
+        self._work_alt = 20
         # необходимость в HOVER
         self._need_hover = True
         # ==============================================================
