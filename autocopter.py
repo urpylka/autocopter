@@ -135,7 +135,7 @@ try:
             STATE = nextState
         time.sleep(3) # для обеспечения задержки в 3 сек в случае возникновения повторяющейся ошибки
 finally:
-    dronekit.disconnect
+    dronekit.disconnect()
     print('\n######################################################')
     print('\nFinally success!\n')
     print('######################################################\n')
