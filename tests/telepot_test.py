@@ -1,12 +1,14 @@
 #!/usr/bin/python
 # -*- coding: utf8 -*-
+
+import sys, telepot, time
+import http.client
+
 def get_ip():
-    import http.client
     conn = http.client.HTTPConnection("smirart.ru")
     conn.request("GET", "/ip")
     return conn.getresponse().read()
-#START TELEGRAM BOT
-import sys, telepot
+
 def handle(msg):
     content_type, chat_type, chat_id = telepot.glance(msg)
     print(content_type, chat_type, chat_id)
@@ -23,8 +25,7 @@ def handle(msg):
                 # остановка всех операций в MACHINE STATE и перевод в IDLE
                 bot.sendMessage(chat_id, 'stop all operations, go to IDLE STATE')
             elif msg['text'] == '/help':
-                bot.sendMessage(chat_id,
-                                'This Bot created for control copter\nА вообще во мне семь всевдопараллельных потоков и меня это устраивает')
+                bot.sendMessage(chat_id, 'This Bot created for control copter\nА вообще во мне семь всевдопараллельных потоков и меня это устраивает')
             else:
                 bot.sendMessage(chat_id, 'Bad command!')
         elif content_type == 'location':
@@ -35,22 +36,9 @@ def handle(msg):
             bot.sendMessage(chat_id, 'Bad command!')
     else:
         bot.sendMessage(chat_id, 'Access error!')
-TOKEN = sys.argv[1]  # get token from command-line
-bot = telepot.Bot(TOKEN)
+
+bot = telepot.Bot(sys.argv[1])
 bot.message_loop(handle)
 print ('Listening ...')
 bot.sendMessage(62922848, "copter online: %s" % get_ip())
 #bot.sendMessage(62922848, get_status(vehicle))
-import time
-# Keep the program running.
-STATE = 'IDLE'
-while 1:
-    if STATE == 'IDLE':
-        pass
-    elif STATE == 'FLY':
-        pass
-    elif STATE == 'EMERGY_STOP':
-        pass
-    else:
-        pass
-    time.sleep(1000)

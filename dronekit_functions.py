@@ -1,16 +1,18 @@
 #!/usr/bin/env python
 # -*- coding: utf8 -*-
-# Import DroneKit-Python
+
 from dronekit import VehicleMode, LocationGlobalRelative, LocationGlobal, Command, connect
 import time, traceback, sys, math
 from pymavlink import mavutil
 from other_functions import get_ip
+
 # ====================================================================================
 # Устранение проблем с кодировкой UTF-8
 # http://webhamster.ru/mytetrashare/index/mtb0/13566385393amcr1oegx
 reload(sys)
 sys.setdefaultencoding('utf8')
 # ====================================================================================
+
 def get_location_metres(original_location, dNorth, dEast):
     """
     Returns a LocationGlobal object containing the latitude/longitude `dNorth` and `dEast` metres from the
@@ -32,6 +34,7 @@ def get_location_metres(original_location, dNorth, dEast):
     newlat = original_location.lat + (dLat * 180 / math.pi)
     newlon = original_location.lon + (dLon * 180 / math.pi)
     return LocationGlobal(newlat, newlon, original_location.alt)
+
 def get_distance_metres(aLocation1, aLocation2):
     """
     Returns the ground distance in metres between two LocationGlobal objects.
@@ -43,11 +46,14 @@ def get_distance_metres(aLocation1, aLocation2):
     dlat = aLocation2.lat - aLocation1.lat
     dlong = aLocation2.lon - aLocation1.lon
     return math.sqrt((dlat * dlat) + (dlong * dlong)) * 1.113195e5
+
 class autocopterDronekit(object):
+
     def _new_state(self,CURRENT_STATE,NEW_STATE):
         self._stop_state = True
         self._old_state = CURRENT_STATE
         self._next_state = NEW_STATE
+    
     def _create_mission(self,lat,lon):
         self._mission_created = False
         # exeption https://pythonworld.ru/tipy-dannyx-v-python/isklyucheniya-v-python-konstrukciya-try-except-dlya-obrabotki-isklyuchenij.html
@@ -62,8 +68,10 @@ class autocopterDronekit(object):
             return "Произошла ошибка при построении миссии\n" + ex.message + "\n" + traceback.format_exc()
         finally:
             pass
+
     def get_location(self,bot,chat_id):
         bot.sendLocation(chat_id, self._vehicle.location.global_frame.lat, self._vehicle.location.global_frame.lon)
+
     def new_command(self,STATE,command,params=None):
         if STATE == 'INIT':
             return 'Ошибка 3! Некорректная команда %s' % command + ' для состояния %s' % STATE
@@ -170,6 +178,7 @@ class autocopterDronekit(object):
                 return 'Ошибка 3! Некорректная команда ' + command + ' для состояния ' + STATE
         else:
             return 'Ошибка 4! Некорректное состояние ' + STATE
+
     def __init__(self,status_printer):
         # ==============================================================
         # построение миссии
@@ -191,12 +200,14 @@ class autocopterDronekit(object):
         self._stop_state = False
         self._next_state = 'IDLE'
         # ==============================================================
+
     @property
     def status_of_connect(self):
         if self._vehicle != None:
             return True
         else:
             raise Exception("Не удалось подключиться к APM")
+
     def disconnect(self):
         '''
         Close vehicle object before exiting script
@@ -204,11 +215,10 @@ class autocopterDronekit(object):
         '''
         if self._vehicle != None:
             self._vehicle.close()
+
     @property
     def get_status(self):
-        # Get some vehicle attributes (state)
-        buf = "Get some vehicle attribute values:" + \
-              "\nGPS: %s" % self._vehicle.gps_0 + \
+        buf = "\nGPS: %s" % self._vehicle.gps_0 + \
               "\nBattery: %s" % self._vehicle.battery + \
               "\nLast Heartbeat: %s" % self._vehicle.last_heartbeat + \
               "\nIs Armable?: %s" % self._is_armable + \
@@ -222,6 +232,7 @@ class autocopterDronekit(object):
               "\nGroundspeed: %s" % self._vehicle.groundspeed + \
               "\nAirspeed: %s" % self._vehicle.airspeed
         return buf
+
     @property
     def distance_to_current_waypoint(self):
         """
@@ -238,6 +249,7 @@ class autocopterDronekit(object):
         targetWaypointLocation = LocationGlobalRelative(lat, lon, alt)
         distancetopoint = get_distance_metres(self._vehicle.location.global_frame, targetWaypointLocation)
         return distancetopoint
+
     def download_mission(self):
         """
         Download the current mission from the vehicle.
@@ -245,6 +257,7 @@ class autocopterDronekit(object):
         cmds = self._vehicle.commands
         cmds.download()
         cmds.wait_ready()  # wait until download is complete.
+
     def adds_square_mission(self, aLocation, aSize):
         """
         Adds a takeoff command and four waypoint commands to the current mission.
@@ -286,9 +299,11 @@ class autocopterDronekit(object):
                     0, 0, 0, point4.lat, point4.lon, 14))
         print "Upload new commands to vehicle"
         cmds.upload()
+
     @property
     def onLand(self):
         return self._vehicle.system_status.state == 'STANDBY'
+
     def LAND(self, log_and_messages):
         self._old_state = 'LAND'
         log_and_messages.deb_pr_tel('STATE = ' + self._old_state)
@@ -305,6 +320,7 @@ class autocopterDronekit(object):
                 return self._next_state
         log_and_messages.deb_pr_tel('Успешное завершение состояния ' + self._old_state + ' переключение в состояние ' + self._next_state)
         return self._next_state
+
     def IDLE(self,log_and_messages):
         self._old_state = 'IDLE'
         log_and_messages.deb_pr_tel('STATE = ' + self._old_state)
@@ -325,6 +341,7 @@ class autocopterDronekit(object):
         log_and_messages.deb_pr_tel(
             'Успешное завершение состояния ' + self._old_state + ' переключение в состояние ' + self._next_state)
         return self._next_state
+
     def _simple_goto_wrapper(self,lat,lon,alt=20,groundspeed=7.5):
         # Задаем координаты нужной точки
         a_location = LocationGlobalRelative(lat,lon,alt)
@@ -332,6 +349,7 @@ class autocopterDronekit(object):
         self._vehicle.simple_goto(a_location)
         # Путевая скорость, м/с
         self._vehicle.groundspeed = groundspeed
+
     def HOVER(self,log_and_messages):
         self._old_state = 'HOVER'
         log_and_messages.deb_pr_tel('STATE = ' + self._old_state)
@@ -352,6 +370,7 @@ class autocopterDronekit(object):
         log_and_messages.deb_pr_tel(
             'Успешное завершение состояния ' + self._old_state + ' переключение в состояние ' + self._next_state)
         return self._next_state
+
     def RTL(self,log_and_messages):
         self._old_state = 'RTL'
         log_and_messages.deb_pr_tel('STATE = ' + self._old_state)
@@ -370,6 +389,7 @@ class autocopterDronekit(object):
         log_and_messages.deb_pr_tel(
             'Успешное завершение состояния ' + self._old_state + ' переключение в состояние ' + self._next_state)
         return self._next_state
+
     @property
     def _is_armable(self):
         """
@@ -382,6 +402,7 @@ class autocopterDronekit(object):
         # check that we have a GPS fix
         # check that EKF pre-arm is complete
         return self._vehicle.mode != 'INITIALISING' and self._vehicle.gps_0.fix_type > 1# and self.vehicle._ekf_predposhorizabs #отключена проверка ekf
+
     def TAKEOFF(self, log_and_messages):
         aTargetAltitude = self._work_alt
         self._old_state = 'TAKEOFF'
@@ -436,6 +457,7 @@ class autocopterDronekit(object):
             'Успешное завершение состояния ' + self._old_state + ' переключение в состояние ' + self._next_state)
         self._need_hover = False
         return self._next_state
+
     def _is_arrived(self, lat, lon, alt, precision=0.3):
         # функция взята из https://habrahabr.ru/post/281591/
         # текущая позиция
@@ -452,6 +474,7 @@ class autocopterDronekit(object):
         else:
             #print "Еще не долетели"
             return False
+
     def GOTO(self,log_and_messages):
         self._next_state = 'HOVER' # должен быть только HOVER
         if self._mission_created:
@@ -476,6 +499,7 @@ class autocopterDronekit(object):
             log_and_messages.deb_pr_tel(
                 'Ошибка: Создайте миссию заранее! Сейчас ' + self._old_state + ' переключение в состояние ' + self._next_state)
             return self._next_state
+
     def AUTO(self, log_and_messages):
         self._next_state = self._old_state  # должен быть только HOVER
         if self._mission_created:

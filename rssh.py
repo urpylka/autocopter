@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf8 -*-
 
-# блокировка до тех пор, пока не будет соединения с интернетом
 from other_functions import wait_internet
+# ожидание интернет подключения
 wait_internet()
 print 'internet'
+
 # ==========================================================================================================
 # https://ru.stackoverflow.com/questions/225896/%D0%97%D0%B0%D0%BF%D1%83%D1%81%D0%BA-bash-%D0%B8%D0%B7-%D1%81%D0%BA%D1%80%D0%B8%D0%BF%D1%82%D0%B0-python-2-7-3
 import subprocess, time

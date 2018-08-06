@@ -1,17 +1,21 @@
 #!/usr/bin/env python
 # -*- coding: utf8 -*-
+
 from log_and_messages import *
 import sys, telepot, time, traceback, os.path
 from dronekit_functions import *
+
 # ====================================================================================
 # Устранение проблем с кодировкой UTF-8
 # http://webhamster.ru/mytetrashare/index/mtb0/13566385393amcr1oegx
 reload(sys)
 sys.setdefaultencoding('utf8')
 # ====================================================================================
+
 DEBUG = True
 MY_CHAT_ID = 62922848
 STATE = 'INIT'
+
 try:
     while True:
         if STATE == 'INIT':
@@ -22,6 +26,7 @@ try:
                 from other_functions import wait_internet
                 wait_internet()
                 # ===========================================================================================================
+
                 # START TELEGRAM BOT
                 #TOKEN = sys.argv[1]  # get token from command-line
                 token_path = "/home/pi/autocopter/telegrambot.token"
@@ -34,6 +39,7 @@ try:
                     break
                 bot = telepot.Bot(TOKEN)
                 # ==========================================================================================================
+
                 lam = log_and_messages(bot, MY_CHAT_ID, DEBUG)
                 lam.deb_pr_tel("Autocopter is online: %s" % get_ip())
 
