@@ -1,9 +1,0 @@
-[Unit]
-Description=Reverse-SSH
-
-[Service]
-ExecStart=/home/pi/autocopter/rssh.py
-Restart=on-abort
-
-[Install]
-WantedBy=multi-user.target
