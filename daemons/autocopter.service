@@ -1,0 +1,9 @@
+[Unit]
+Description=Autocopter
+
+[Service]
+ExecStart=/home/pi/autocopter/autocopter.py
+Restart=on-abort
+
+[Install]
+WantedBy=multi-user.target
