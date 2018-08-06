@@ -1,9 +1,0 @@
-[Unit]
-Description=UMTS-Keeper
-
-[Service]
-ExecStart=/home/pi/autocopter/3g_modem/umtskeeper_beeline.sh
-Restart=on-abort
-
-[Install]
-WantedBy=multi-user.target

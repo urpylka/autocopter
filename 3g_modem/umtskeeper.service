@@ -1,0 +1,9 @@
+[Unit]
+Description=UMTS-Keeper
+
+[Service]
+ExecStart=/home/pi/autocopter/3g_modem/umtskeeper --sakisoperators "USBINTERFACE='0' OTHER='USBMODEM' USBMODEM='12d1:1506' APN='CUSTOM_APN' CUSTOM_APN='internet.beeline.ru' SIM_PIN='0000' APN_USER='beeline' APN_PASS='beeline'" --sakisswitches "--sudo --console" --devicename 'Huawei' --log --nat 'no'
+Restart=on-abort
+
+[Install]
+WantedBy=multi-user.target
