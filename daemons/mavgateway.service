@@ -1,9 +1,0 @@
-[Unit]
-Description=MAVGateway
-
-[Service]
-ExecStart=/usr/local/bin/mavproxy.py --master=/dev/ttyAMA0,57600 --out=tcpin:0.0.0.0:5760 --out=tcpin:127.0.0.1:14600 --daemon
-Restart=on-abort
-
-[Install]
-WantedBy=multi-user.target

@@ -13,7 +13,8 @@ sys.setdefaultencoding('utf8')
 # ====================================================================================
 
 DEBUG = True
-MY_CHAT_ID = 62922848
+TOKEN = sys.argv[1]
+MY_CHAT_ID = sys.argv[2]
 STATE = 'INIT'
 
 try:
@@ -25,20 +26,9 @@ try:
                 # блокировка до тех пор, пока не будет соединения с интернетом
                 from other_functions import wait_internet
                 wait_internet()
-                # ===========================================================================================================
-
-                # START TELEGRAM BOT
-                #TOKEN = sys.argv[1]  # get token from command-line
-                token_path = "/home/pi/autocopter/telegrambot.token"
-                if os.path.isfile(token_path):
-                    f = open(token_path, 'r')
-                    TOKEN = f.readline().rstrip('\n')
-                    f.close()
-                else:
-                    print "Файл " + token_path + " не найден! Dronekit не будет доступен в finnaly, не правильно отработает lam."
-                    break
-                bot = telepot.Bot(TOKEN)
                 # ==========================================================================================================
+
+                bot = telepot.Bot(TOKEN)
 
                 lam = log_and_messages(bot, MY_CHAT_ID, DEBUG)
                 lam.deb_pr_tel("Autocopter is online: %s" % get_ip())
