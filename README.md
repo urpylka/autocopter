@@ -3,29 +3,24 @@
 Autocopter allow control your APM compatible copter with Telegram messenger.
 
 ## TODO
-* вынести софт для поддержания соединения с модемом и rssh
+* вынести софт для поддержания соединения с модемом sakis3g+umtskeeper (папка 3g_modem) и rssh
 * сделать нормальное описание: помимо README выложить видео и скрины
-* сделать нормальный конфиг файл
+* сделать нормальный конфиг файл (избавиться от chat_id, передачи токена через sys.argv[1])
+* добавить диаграмму структуры
+* описать requirements
+* надо написать параллельную реализацию для выполенения фукнций dronekit (старая идея)
 
 External libraries:
-dronekit-python,
-telepot
+dronekit-python, telepot
 
-### Code in development! ###
-23.04.2017
-
-### Install ###
+## Install
 Download from bulid/latest.sh file to your home direstory.
-```php
+```bash
+git clone https://github.com/urpylka/autocopter.git
 /home/pi/latest.sh
 ```
-### Use for update and launch on Raspberry ###
-```php
-git clone https://github.com/urpylka/autocopter.git
-sudo -s
+## Launch
+```bash
 python autocopter/autocopter.py 'YOUR_BOT_TOKEN'
 ```
 
-В репозиторий добавлена связка sakis3g+umtskeeper (папка 3g_modem)
-
-надо написать параллельную реализацию для выполенения фукнций dronekit
