@@ -2,6 +2,8 @@
 
 Autocopter allow control your APM compatible copter with Telegram messenger.
 
+![](telegram.jpg)
+
 ## Install
 
 1. Install requrements:
