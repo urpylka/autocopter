@@ -1,15 +1,18 @@
 #!/usr/bin/python
 # -*- coding: utf8 -*-
 
-from dronekit import connect, VehicleMode
+from dronekit import connect
 
-def get_status(vehicle):
-    buf = "\nGPS: %s" % vehicle.gps_0 + \
-          "\nBattery: %s" % vehicle.battery + \
-          "\nLast Heartbeat: %s" % vehicle.last_heartbeat + \
+def get_status(_vehicle):
+    """
+    Get some vehicle atribute values
+    """
+    buf = "\nGPS: %s" % _vehicle.gps_0 + \
+          "\nBattery: %s" % _vehicle.battery + \
+          "\nLast Heartbeat: %s" % _vehicle.last_heartbeat + \
           "\nIs Armable?: %s" % vehicle._is_armable + \
-          "\nSystem status: %s" % vehicle.system_status.state + \
-          "\nMode: %s" % vehicle.mode.name
+          "\nSystem status: %s" % _vehicle.system_status.state + \
+          "\nMode: %s" % _vehicle.mode.name
     return buf
 
 vehicle = connect('tcp:127.0.0.1:14600', wait_ready=True)

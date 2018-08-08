@@ -1,24 +1,31 @@
 #!/usr/bin/python
 # -*- coding: utf8 -*-
 
-# USE: python ./tepelot_test.py 'BOT_TOKEN' ['CHAT_ID']
+# http://telepot.readthedocs.io/en/latest/
 
-import sys, telepot
-import http.client
+import sys
+import time
+import telepot
+from telepot.loop import MessageLoop
 
 def handle(msg):
     content_type, chat_type, chat_id = telepot.glance(msg)
     print(content_type, chat_type, chat_id)
+    print params
 
     if content_type == 'text':
         bot.sendMessage(chat_id, msg['text'])
-        msg['text'] == '/start':
-    else:
-        bot.sendMessage(chat_id, 'Bad command!')
 
-bot = telepot.Bot(sys.argv[1])
-bot.message_loop(handle)
+TOKEN = sys.argv[1]  # get token from command-line
+
+bot = telepot.Bot(TOKEN)
+
+#telepot.api.set_proxy('http://........')
+#telepot.api.set_proxy('http://........', ('username', 'password'))
+
+MessageLoop(bot, handle).run_as_thread()
 print ('Listening ...')
 
-if (len(sys.argv) == 3):
-    bot.sendMessage(sys.argv[2], "Hello world!")
+# Keep the program running.
+while 1:
+    time.sleep(10)
