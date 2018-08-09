@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf8 -*-
 
-import time, traceback, sys, math, socket
+import time, traceback, sys, math, socket, re, os, json
 from enum import Enum
 import telepot
 import http.client
@@ -40,10 +40,17 @@ def wait_internet():
         time.sleep(1)
 
 def get_ip():
-    #conn = http.client.HTTPConnection("smirart.ru")
-    #conn.request("GET", "/ip")
-    #return conn.getresponse().read()
-    return "FIX_IP"
+    conn = http.client.HTTPConnection("ipv4.icanhazip.com")
+    try:
+        conn.request("GET", "/")
+        http_responce = conn.getresponse().read()
+        IP_REGEX = r'^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$'
+        if re.match(IP_REGEX, http_responce):
+            return http_responce
+        else:
+            return "не удалось вычислить IP адрес"
+    except Exception:
+        return "не удалось вычислить IP адрес"
 
 def get_location_metres(original_location, dNorth, dEast):
     """
@@ -83,11 +90,12 @@ class Autocopter(object):
     """
     This class consists of logic for states (methods 'do_*' & dependencies) and method 'new_command'
     """
-    def __init__(self, token, chat_id, debug = True):
+    def __init__(self, _connection_string, token, chat_id, proxy, debug):
         self._vehicle = None
+        self.connection_string = _connection_string
 
         # Params of info-messages
-        self.bot = TelegramBot(token, chat_id, debug, self)
+        self.bot = TelegramBot(token, chat_id, proxy, debug, self)
         self.debug_message = self.bot.debug_message
 
         # Params of auto-missions
@@ -98,8 +106,8 @@ class Autocopter(object):
 
         # Params of states machine
         self.current_state = States.INIT
-        self._stop_state = False
-        self._next_state = States.IDLE
+        self.stop_state = False
+        self.next_state = States.IDLE
 
     def _create_mission(self, lat, lon):
         self._mission_created = False
@@ -117,8 +125,8 @@ class Autocopter(object):
             pass
 
     def new_state(self, new_state):
-        self._stop_state = True
-        self._next_state = new_state
+        self.stop_state = True
+        self.next_state = new_state
 
     @property
     def get_location():
@@ -138,6 +146,7 @@ class Autocopter(object):
         '''
         if self._vehicle != None:
             self._vehicle.close()
+            print "Successful disconnect APM"
 
     @property
     def get_status(self):
@@ -229,10 +238,10 @@ class Autocopter(object):
 
     def do_INIT(self):
         self.current_state = States.INIT
-
         wait_internet()
-        self.debug_message("Autocopter is online: %s" % get_ip())
 
+        print "Try send message..."
+        self.debug_message("Autocopter is online: %s" % get_ip())
         self.debug_message("STATE = %s" % self.current_state)
 
         self.bot.start_handler()
@@ -243,7 +252,7 @@ class Autocopter(object):
                 self.debug_message("Connecting to APM ...")
                 # http://python.dronekit.io/automodule.html#dronekit.connect
                 # функция долгая (пишет через функцию status_printer)
-                self._vehicle = connect('tcp:127.0.0.1:14600', wait_ready = True, status_printer = self.debug_message)
+                self._vehicle = connect(self.connection_string, wait_ready = True, status_printer = self.debug_message)
 
                 if self._status_of_connect:
                     self.debug_message("Connect successful!")
@@ -261,38 +270,38 @@ class Autocopter(object):
     def do_LAND(self):
         self.current_state = States.LAND
         self.debug_message('STATE = ' + self.current_state)
-        self._stop_state = False
-        self._next_state = States.IDLE
+        self.stop_state = False
+        self.next_state = States.IDLE
         # http://ardupilot.org/copter/docs/land-mode.html
         self._vehicle.mode = VehicleMode("LAND")
         while not self.onLand:
-            if not self._stop_state:
+            if not self.stop_state:
                 #self.debug_message('Waiting for ' + self.current_state)
                 time.sleep(1)
             else:
-                self.debug_message("Прерывание состояния " + self.current_state + " переключение в состояние " + self._next_state)
-                return self._next_state
-        self.debug_message("Успешное завершение состояния " + self.current_state + " переключение в состояние " + self._next_state)
-        return self._next_state
+                self.debug_message("Прерывание состояния %s" % self.current_state + " переключение в состояние %s" % self.next_state)
+                return self.next_state
+        self.debug_message("Успешное завершение состояния %s" % self.current_state + " переключение в состояние %s" % self.next_state)
+        return self.next_state
 
     def do_IDLE(self):
         self.current_state = States.IDLE
         self.debug_message("STATE = %s" % self.current_state)
-        self._stop_state = False
-        self._next_state = States.IDLE
+        self.stop_state = False
+        self.next_state = States.IDLE
         # http://ardupilot.org/copter/docs/ac2_guidedmode.html
         # http://python.dronekit.io/examples/guided-set-speed-yaw-demo.html
         self._vehicle.armed = False
         self._vehicle.mode = VehicleMode("GUIDED")
         while True:
-            if not self._stop_state:
+            if not self.stop_state:
                 #self.debug_message('I\'m in '+self.current_state)
                 time.sleep(1)
             else:
-                self.debug_message("Прерывание состояния " + self.current_state + " переключение в состояние " + self._next_state)
-                return self._next_state
-        self.debug_message("Успешное завершение состояния " + self.current_state + " переключение в состояние " + self._next_state)
-        return self._next_state
+                self.debug_message("Прерывание состояния %s" % self.current_state + " переключение в состояние %s" % self.next_state)
+                return self.next_state
+        self.debug_message("Успешное завершение состояния %s" % self.current_state + " переключение в состояние %s" % self.next_state)
+        return self.next_state
 
     def _simple_goto_wrapper(self, lat, lon, alt = 20, groundspeed = 7.5):
         # Задаем координаты нужной точки
@@ -305,38 +314,38 @@ class Autocopter(object):
     def do_HOVER(self):
         self.current_state = States.HOVER
         self.debug_message("STATE = %s" % self.current_state)
-        self._stop_state = False
-        self._next_state = States.HOVER
+        self.stop_state = False
+        self.next_state = States.HOVER
         self._vehicle.mode = VehicleMode("GUIDED")
         if self._need_hover:
             self._simple_goto_wrapper(self._vehicle.location.global_relative_frame.lat, self._vehicle.location.global_relative_frame.lon, self._vehicle.location.global_relative_frame.alt)
         self._need_hover = True #сброс
         while True:
-            if not self._stop_state:
+            if not self.stop_state:
                 #self.debug_message('I\'m in '+self.current_state)
                 time.sleep(1)
             else:
-                self.debug_message("Прерывание состояния " + self.current_state + " переключение в состояние " + self._next_state)
-                return self._next_state
-        self.debug_message("Успешное завершение состояния " + self.current_state + " переключение в состояние " + self._next_state)
-        return self._next_state
+                self.debug_message("Прерывание состояния %s" % self.current_state + " переключение в состояние %s" % self.next_state)
+                return self.next_state
+        self.debug_message("Успешное завершение состояния %s" % self.current_state + " переключение в состояние %s" % self.next_state)
+        return self.next_state
 
     def do_RTL(self):
-        self.current_state = 'RTL'
+        self.current_state = States.RTL
         self.debug_message("STATE = %s" % self.current_state)
-        self._stop_state = False
-        self._next_state = States.IDLE
+        self.stop_state = False
+        self.next_state = States.IDLE
         # http://ardupilot.org/copter/docs/rtl-mode.html
         self._vehicle.mode = VehicleMode("RTL")
         while not self.onLand:
-            if not self._stop_state:
+            if not self.stop_state:
                 #self.debug_message('Waiting for ' + self.current_state)
                 time.sleep(1)
             else:
-                self.debug_message("Прерывание состояния " + self.current_state + " переключение в состояние " + self._next_state)
-                return self._next_state
-        self.debug_message("Успешное завершение состояния " + self.current_state + " переключение в состояние " + self._next_state)
-        return self._next_state
+                self.debug_message("Прерывание состояния %s" % self.current_state + " переключение в состояние %s" % self.next_state)
+                return self.next_state
+        self.debug_message("Успешное завершение состояния %s" % self.current_state + " переключение в состояние %s" % self.next_state)
+        return self.next_state
 
     @property
     def _is_armable(self):
@@ -355,8 +364,8 @@ class Autocopter(object):
         aTargetAltitude = self._work_alt
         self.current_state = States.TAKEOFF
         self.debug_message("STATE = %s" % self.current_state)
-        self._stop_state = False
-        self._next_state = States.GOTO
+        self.stop_state = False
+        self.next_state = States.GOTO
         """
         Arms vehicle and fly to aTargetAltitude.
         """
@@ -364,43 +373,43 @@ class Autocopter(object):
         # Don't let the user try to arm until autopilot is ready
         self.debug_message("Waiting for vehicle to initialise...")
         while not self._is_armable: #проверка не дронкита, а собственная
-            if not self._stop_state:
+            if not self.stop_state:
                 #self.debug_message('Waiting for ' + self.current_state)
                 #self.debug_message('Waiting for vehicle to initialise...')
                 time.sleep(1)
             else:
-                self.debug_message("Прерывание состояния " + self.current_state + " переключение в состояние " + self._next_state)
+                self.debug_message("Прерывание состояния %s" % self.current_state + " переключение в состояние %s" % self.next_state)
                 self.debug_message("Stopping takeoff on pre-arm!")
-                return self._next_state
+                return self.next_state
         # Copter should arm in GUIDED mode
         self._vehicle.mode = VehicleMode("GUIDED")
         self.debug_message("Arming motors")
         self._vehicle.armed = True
         while not self._vehicle.armed:
-            if not self._stop_state:
+            if not self.stop_state:
                 #self.debug_message('Waiting for ' + self.current_state)
                 #self.debug_message('Waiting for arming...')
                 time.sleep(1)
             else:
-                self.debug_message("Прерывание состояния " + self.current_state + " переключение в состояние " + self._next_state)
+                self.debug_message("Прерывание состояния %s" % self.current_state + " переключение в состояние %s" % self.next_state)
                 self.debug_message("Stopping takeoff on arm!")
-                return self._next_state
+                return self.next_state
         self.debug_message("Taking off!")
         self._vehicle.simple_takeoff(aTargetAltitude)  # Take off to target altitude
         # Wait until the vehicle reaches a safe height before processing the goto (otherwise the command
         #  after Vehicle.simple_takeoff will execute immediately).
         while self._vehicle.location.global_relative_frame.alt < aTargetAltitude * 0.95: # Trigger just below target alt.
-            if not self._stop_state:
+            if not self.stop_state:
                 #self.debug_message('Waiting for ' + self.current_state)
                 self.debug_message("Altitude: %s" % self._vehicle.location.global_relative_frame.alt)
                 time.sleep(1)
             else:
-                self.debug_message("Прерывание состояния " + self.current_state + " переключение в состояние " + self._next_state)
+                self.debug_message("Прерывание состояния %s" % self.current_state + " переключение в состояние %s" % self.next_state)
                 self.debug_message("Stopping takeoff on fly!")
-                return self._next_state
-        self.debug_message("Успешное завершение состояния " + self.current_state + " переключение в состояние " + self._next_state)
+                return self.next_state
+        self.debug_message("Успешное завершение состояния %s" % self.current_state + " переключение в состояние %s" % self.next_state)
         self._need_hover = False
-        return self._next_state
+        return self.next_state
 
     def _is_arrived(self, lat, lon, alt, precision = 0.3):
         # функция взята из https://habrahabr.ru/post/281591/
@@ -420,36 +429,36 @@ class Autocopter(object):
             return False
 
     def do_GOTO(self):
-        self._next_state = States.HOVER # должен быть только HOVER
+        self.next_state = States.HOVER # должен быть только HOVER
         if self._mission_created:
             self.current_state = States.GOTO
             self.debug_message("STATE = %s" % self.current_state)
-            self._stop_state = False
-            self._next_state = States.HOVER
+            self.stop_state = False
+            self.next_state = States.HOVER
             self._vehicle.mode = VehicleMode("GUIDED")
             self._simple_goto_wrapper(self._goto_location.lat, self._goto_location.lon, self._goto_location.alt)
             while self._is_arrived(self._goto_location.lat, self._goto_location.lon, self._goto_location.alt):
-                if not self._stop_state:
+                if not self.stop_state:
                     #self.debug_message('I\'m in '+self.current_state)
                     self.debug_message("До точки назначения: " + get_distance_metres(self._goto_location, self._vehicle.location.global_relative_frame) + "м")
                     time.sleep(1)
                 else:
-                    self.debug_message("Прерывание состояния " + self.current_state + " переключение в состояние " + self._next_state)
-                    return self._next_state
-            self.debug_message("Успешное завершение состояния " + self.current_state + " переключение в состояние " + self._next_state)
+                    self.debug_message("Прерывание состояния %s" % self.current_state + " переключение в состояние %s" % self.next_state)
+                    return self.next_state
+            self.debug_message("Успешное завершение состояния %s" % self.current_state + " переключение в состояние %s" % self.next_state)
             self._need_hover = False
-            return self._next_state
+            return self.next_state
         else:
-            self.debug_message("Ошибка: Создайте миссию заранее! Сейчас " + self.current_state + " переключение в состояние " + self._next_state)
-            return self._next_state
+            self.debug_message("Ошибка: Создайте миссию заранее! Сейчас %s" % self.current_state + " переключение в состояние %s" % self.next_state)
+            return self.next_state
 
     def do_AUTO(self):
-        self._next_state = self.current_state  # должен быть только HOVER
+        self.next_state = self.current_state  # должен быть только HOVER
         if self._mission_created:
             self.current_state = States.AUTO
             self.debug_message("STATE = %s" % self.current_state)
-            self._stop_state = False
-            self._next_state = States.HOVER
+            self.stop_state = False
+            self.next_state = States.HOVER
             self.debug_message("Starting mission")
             # Reset mission set to first (0) waypoint
             self._vehicle.commands.next = 0
@@ -464,25 +473,25 @@ class Autocopter(object):
             #   distance to the next waypoint.
 
             while True:
-                if not self._stop_state:
+                if not self.stop_state:
                     nextwaypoint = self._vehicle.commands.next
                     self.debug_message("Distance to waypoint (%s): %sм" % (nextwaypoint, self._distance_to_current_waypoint))
                     time.sleep(1)
                 else:
-                    self.debug_message("Прерывание состояния " + self.current_state + " переключение в состояние " + self._next_state)
-                    return self._next_state
-            self.debug_message("Успешное завершение состояния " + self.current_state + " переключение в состояние " + self._next_state)
+                    self.debug_message("Прерывание состояния %s" % self.current_state + " переключение в состояние %s" % self.next_state)
+                    return self.next_state
+            self.debug_message("Успешное завершение состояния %s" % self.current_state + " переключение в состояние %s" % self.next_state)
             # может и не нужна стабилизация но на всякий (вдруг failsafe будет)
             # self._need_hover = False
-            return self._next_state
+            return self.next_state
         else:
-            self.debug_message("Ошибка: Создайте миссию заранее! Сейчас " + self.current_state + " переключение в состояние " + self._next_state)
-            return self._next_state
+            self.debug_message("Ошибка: Создайте миссию заранее! Сейчас %s" % self.current_state + " переключение в состояние %s" % self.next_state)
+            return self.next_state
 
 def main():
     autocopter = None
     try:
-        autocopter = Autocopter(TOKEN, MY_CHAT_ID, DEBUG)
+        autocopter = Autocopter(CONNECTION_STR, TOKEN, CHAT_ID, PROXY, DEBUG)
         while True:
             try:
                 if autocopter.current_state == States.INIT:
@@ -503,14 +512,32 @@ def main():
                     autocopter.do_GOTO()
             except Exception as ex:
                 autocopter.debug_message("Ошибка в состоянии %s" % autocopter.current_state + ":\n" + ex.message + "\n" + traceback.format_exc() + "\n")
+    except KeyboardInterrupt:
+        pass
     finally:
         if autocopter != None: autocopter.disconnect()
-        print "\n######################################################"
-        print "\nDisconnect APM\n"
-        print "######################################################\n"
 
 if __name__ == "__main__":
-    DEBUG = True
-    TOKEN = sys.argv[1]
-    MY_CHAT_ID = sys.argv[2]
+    if len(sys.argv) == 6:
+        CONNECTION_STR = sys.argv[1]
+        TOKEN = sys.argv[2]
+        CHAT_ID = sys.argv[3]
+        PROXY = sys.argv[4]
+        DEBUG = sys.argv[5]
+
+    elif len(sys.argv) == 2:        
+        if os.path.isfile(sys.argv[1]):
+            with open(sys.argv[1]) as json_data:
+                d = json.load(json_data)
+                CONNECTION_STR = d['autocopter']['connection_string']
+                TOKEN = d['telegram']['token']
+                CHAT_ID = d['telegram']['chat_id']
+                PROXY = d['telegram']['proxy']
+                DEBUG = d['telegram']['debug']
+        else:
+            print "Error: file-path or config-path is bad"
+    else:
+        print "Error: amount of args is incorrect"
+
     main()
+    

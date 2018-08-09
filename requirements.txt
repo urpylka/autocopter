@@ -1,0 +1,3 @@
+dronekit==2.9.1
+telepot==12.7
+http==0.2
