@@ -60,6 +60,11 @@ python autocopter/autocopter.py "CONNECTION_STR" "BOT_TOKEN" "CHAT_ID" "PROXY" "
 python autocopter/autocopter.py "PATH_TO_CONFIG"
 ```
 
+## Finite State Machine
+The program is based on the state machine.
+
+![Finite State Machine](uml_statechart_diagram.jpg)
+
 ## MAVGateway - service for run MAVProxy
 
 An option you can install MAVProxy for connecting your APM with many agents (f.e. laptop, dronekit).
