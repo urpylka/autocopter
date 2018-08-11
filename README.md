@@ -6,17 +6,24 @@ This software must be running on companion computer connected to APM using Seria
 
 For configure internet on your drone (Raspberry Pi) use [modem_keeper](https://github.com/urpylka/modem_keeper).
 
-![](telegram.jpg)
+![Telegram Chat](telegram.jpg)
 
 ## Install
+
+For creating config you will need:
+* token – Write to `@BotFather` in your Telegram client.
+* proxy - Simple HTTP proxy. Needs only if `api.telegram.org` not available, else use `null`.
+* chat_id - Run `tests/telepot_test.py` and write to bot via your Telegram client. After you'll see chat id in the console.
+* connection_string - Read [the dronekit manual](http://python.dronekit.io/guide/connecting_vehicle.html).
 
 Execute script:
 ```bash
 git clone https://github.com/urpylka/autocopter.git
 
+# Installing python requirements
 pip install -r autocopter/requirements.txt
 
-# Create config
+# Creating config
 cat <<EOF | sudo tee $(pwd)/autocopter/autocopter.json > /dev/null
 {
     "telegram":
@@ -28,12 +35,12 @@ cat <<EOF | sudo tee $(pwd)/autocopter/autocopter.json > /dev/null
     },
     "autocopter":
     {
-        "connection_string":"tcp:127.0.0.1:14600"
+        "connection_string":"/dev/ttyACM0"
     }
 }
 EOF
 
-# Create service
+# Creating service
 cat <<EOF | sudo tee /lib/systemd/system/autocopter.service > /dev/null
 [Unit]
 Description=Autocopter
