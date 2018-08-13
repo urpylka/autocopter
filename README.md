@@ -1,6 +1,6 @@
 # Autocopter
 
-Autocopter allow control your APM compatible copter with Telegram messenger.
+Autocopter allow control your APM compatible copter with Telegram messenger. You can see how that works on [youtube](https://youtu.be/CE9x4rPizvQ) (russian audio).
 
 This software must be running on companion computer connected to APM using Serial (USB), TCP or UDP. Recommended embedded platform is Raspberry Pi.
 
@@ -94,6 +94,6 @@ sudo systemctl start mavgateway
 ```
 
 ## TODO
-* Выложить видео с полетов
+
 * Подумать и мб переделать стуктуру? Вынести States?
 * Подумать как связать с ros: через класс общий для dronekit и mavros?
