@@ -11,6 +11,7 @@ For configure internet on your drone (Raspberry Pi) use [modem_keeper](https://g
 ## Install
 
 For creating config you will need:
+
 * token – Write to `@BotFather` in your Telegram client.
 * proxy - Simple HTTP proxy. Needs only if `api.telegram.org` not available, else use `null`.
 * chat_id - Run `tests/telepot_test.py` and write to bot via your Telegram client. After you'll see chat id in the console.
@@ -56,7 +57,9 @@ EOF
 sudo systemctl enable autocopter
 sudo systemctl start autocopter
 ```
+
 ## Manual launch
+
 ```bash
 # Stop daemon if running
 sudo systemctl stop autocopter
@@ -68,13 +71,14 @@ python autocopter/autocopter.py "PATH_TO_CONFIG"
 ```
 
 ## Finite State Machine
+
 The program is based on the state machine.
 
 ![Finite State Machine](uml_statechart_diagram.jpg)
 
-## MAVGateway - service for run MAVProxy
+## MAVGateway, a service for runing MAVProxy
 
-An option you can install MAVProxy for connecting your APM with many agents (f.e. laptop, dronekit).
+As an option, you can install MAVProxy for connecting your APM with many agents (i.e. laptop, dronekit).
 
 ```bash
 cat <<EOF | sudo tee /lib/systemd/system/mavgateway.service > /dev/null
