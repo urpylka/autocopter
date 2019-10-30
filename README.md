@@ -1,6 +1,8 @@
 # Autocopter
 
-Autocopter allow control your APM compatible copter with Telegram messenger. You can see how that works on [youtube](https://youtu.be/CE9x4rPizvQ) (russian audio).
+Firstly Autoсopter was developed as the Telegram bot works on a Raspberry Pi. There is allow control your APM compatible copter throw Telegram messenger. You can see how that was worked on [youtube](https://youtu.be/CE9x4rPizvQ) (russian audio).
+
+Now I made decision that Autocopter must be the framework. There are consists of two components: `states` and `tasks`. For example `state` it's high level logic for make fly to the point, make land & etc. And `task` it's high level logic for make flight mission such as delivery missions, monitoring misssions & etc. Tasks may used sets of states in self program.
 
 This software must be running on companion computer connected to APM using Serial (USB), TCP or UDP. Recommended embedded platform is Raspberry Pi.
 
