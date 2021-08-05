@@ -1,6 +1,6 @@
 # Autocopter
 
-Autocopter allow control your APM compatible copter with Telegram messenger. You can see how that works on [youtube](https://youtu.be/CE9x4rPizvQ) (russian audio).
+Autocopter allow to control your APM compatible copter with Telegram messenger. You can see how that works on [youtube](https://youtu.be/CE9x4rPizvQ) (russian audio).
 
 This software must be running on companion computer connected to APM using Serial (USB), TCP or UDP. Recommended embedded platform is Raspberry Pi.
 
@@ -18,6 +18,7 @@ For creating config you will need:
 * connection_string - Read [the dronekit manual](http://python.dronekit.io/guide/connecting_vehicle.html).
 
 Execute script:
+
 ```bash
 git clone https://github.com/urpylka/autocopter.git
 
@@ -25,7 +26,7 @@ git clone https://github.com/urpylka/autocopter.git
 pip install -r autocopter/requirements.txt
 
 # Creating config
-cat <<EOF | sudo tee $(pwd)/autocopter/autocopter.json > /dev/null
+cat << EOF | sudo tee $(pwd)/autocopter/autocopter.json > /dev/null
 {
     "telegram":
     {
@@ -42,7 +43,7 @@ cat <<EOF | sudo tee $(pwd)/autocopter/autocopter.json > /dev/null
 EOF
 
 # Creating service
-cat <<EOF | sudo tee /lib/systemd/system/autocopter.service > /dev/null
+cat << EOF | sudo tee /lib/systemd/system/autocopter.service > /dev/null
 [Unit]
 Description=Autocopter
 
@@ -81,7 +82,7 @@ The program is based on the state machine.
 As an option, you can install MAVProxy for connecting your APM with many agents (i.e. laptop, dronekit).
 
 ```bash
-cat <<EOF | sudo tee /lib/systemd/system/mavgateway.service > /dev/null
+cat << EOF | sudo tee /lib/systemd/system/mavgateway.service > /dev/null
 [Unit]
 Description=MAVGateway
 
@@ -99,5 +100,5 @@ sudo systemctl start mavgateway
 
 ## TODO
 
-* Подумать и мб переделать стуктуру? Вынести States?
-* Подумать как связать с ros: через класс общий для dronekit и mavros?
+* Change the structure (move the states)
+* How to connect by ROS (common class for Dronekit + MAVROS)?
